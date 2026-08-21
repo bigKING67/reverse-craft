@@ -41,7 +41,7 @@ def source_files() -> list[Path]:
 def main() -> int:
     errors: list[str] = []
     files = source_files()
-    relative = {str(path.relative_to(ROOT)) for path in files}
+    relative = {path.relative_to(ROOT).as_posix() for path in files}
     for required in REQUIRED:
         if required not in relative:
             errors.append(f"missing required file: {required}")
