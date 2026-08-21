@@ -103,6 +103,19 @@ def bounded_text(value: str, limit: int = 4000) -> str:
     return value[:limit] + f"\n...[truncated {len(value) - limit} chars]"
 
 
+def pid_is_alive(pid: int) -> bool | None:
+    # On Windows os.kill(pid, 0) terminates the process instead of probing it.
+    if os.name == "nt":
+        return None
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except (PermissionError, OSError):
+        return True
+    return True
+
+
 class FileLock(AbstractContextManager["FileLock"]):
     """Portable exclusive-create lock with bounded stale recovery."""
 
@@ -134,12 +147,8 @@ class FileLock(AbstractContextManager["FileLock"]):
                 try:
                     owner = load_json(self.path)
                     if owner.get("host") == socket.gethostname() and isinstance(owner.get("pid"), int):
-                        try:
-                            os.kill(owner["pid"], 0)
-                        except ProcessLookupError:
-                            owner_dead = True
-                        except (PermissionError, OSError):
-                            owner_dead = False
+                        owner_alive = pid_is_alive(owner["pid"])
+                        owner_dead = owner_alive is False
                 except (OSError, ReverseCraftError):
                     owner_dead = age > self.stale_after
                 if owner_dead or age > self.stale_after:

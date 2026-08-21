@@ -5,6 +5,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from test_support import ROOT  # noqa: F401
 
@@ -20,6 +21,7 @@ from reverse_craft.case_store import (
     validate_case,
 )
 from reverse_craft.common import ReverseCraftError
+from reverse_craft.common import pid_is_alive
 
 
 class CaseStoreTests(unittest.TestCase):
@@ -148,6 +150,12 @@ class CaseStoreTests(unittest.TestCase):
         snapshot = json.loads((case_dir(case_id, str(self.home)) / "evidence.json").read_text(encoding="utf-8"))
         self.assertEqual(6, len(snapshot["items"]))
         self.assertEqual(6, len({item["id"] for item in snapshot["items"]}))
+
+    @mock.patch("reverse_craft.common.os.kill")
+    def test_windows_pid_probe_never_uses_os_kill(self, kill: mock.Mock) -> None:
+        with mock.patch("reverse_craft.common.os.name", "nt"):
+            self.assertIsNone(pid_is_alive(1234))
+        kill.assert_not_called()
 
 
 if __name__ == "__main__":
