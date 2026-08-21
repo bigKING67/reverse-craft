@@ -1,0 +1,7 @@
+interface:
+  display_name: "Reverse Craft"
+  short_description: "Evidence-first reverse engineering and security research"
+  default_prompt: "Use $reverse-craft to route this reverse-engineering task, preserve evidence, and produce a reproducible result."
+policy:
+  allow_implicit_invocation: true
+
