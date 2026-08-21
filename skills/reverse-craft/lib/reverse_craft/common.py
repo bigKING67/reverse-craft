@@ -138,24 +138,36 @@ class FileLock(AbstractContextManager["FileLock"]):
                     os.fsync(handle.fileno())
                 self.acquired = True
                 return self
-            except FileExistsError:
+            except (FileExistsError, PermissionError):
                 try:
                     age = time.time() - self.path.stat().st_mtime
                 except FileNotFoundError:
+                    if time.monotonic() >= deadline:
+                        raise ReverseCraftError(f"timed out waiting for lock: {self.path}")
+                    continue
+                except PermissionError:
+                    if time.monotonic() >= deadline:
+                        raise ReverseCraftError(f"timed out waiting for lock: {self.path}")
+                    time.sleep(0.05)
                     continue
                 owner_dead = False
-                try:
-                    owner = load_json(self.path)
-                    if owner.get("host") == socket.gethostname() and isinstance(owner.get("pid"), int):
-                        owner_alive = pid_is_alive(owner["pid"])
-                        owner_dead = owner_alive is False
-                except (OSError, ReverseCraftError):
-                    owner_dead = age > self.stale_after
+                if os.name != "nt":
+                    try:
+                        owner = load_json(self.path)
+                        if owner.get("host") == socket.gethostname() and isinstance(owner.get("pid"), int):
+                            owner_alive = pid_is_alive(owner["pid"])
+                            owner_dead = owner_alive is False
+                    except (OSError, ReverseCraftError):
+                        owner_dead = age > self.stale_after
                 if owner_dead or age > self.stale_after:
                     try:
                         self.path.unlink()
                     except FileNotFoundError:
-                        pass
+                        continue
+                    except PermissionError:
+                        if time.monotonic() >= deadline:
+                            raise ReverseCraftError(f"timed out recovering stale lock: {self.path}")
+                        time.sleep(0.05)
                     continue
                 if time.monotonic() >= deadline:
                     raise ReverseCraftError(f"timed out waiting for lock: {self.path}")
@@ -163,5 +175,13 @@ class FileLock(AbstractContextManager["FileLock"]):
 
     def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
         if self.acquired:
-            self.path.unlink(missing_ok=True)
-            self.acquired = False
+            deadline = time.monotonic() + min(self.timeout, 1.0)
+            while True:
+                try:
+                    self.path.unlink(missing_ok=True)
+                    self.acquired = False
+                    return
+                except PermissionError as release_error:
+                    if time.monotonic() >= deadline:
+                        raise ReverseCraftError(f"could not release lock: {self.path}") from release_error
+                    time.sleep(0.05)

@@ -20,8 +20,7 @@ from reverse_craft.case_store import (
     seal_case,
     validate_case,
 )
-from reverse_craft.common import ReverseCraftError
-from reverse_craft.common import pid_is_alive
+from reverse_craft.common import FileLock, ReverseCraftError, pid_is_alive
 
 
 class CaseStoreTests(unittest.TestCase):
@@ -156,6 +155,14 @@ class CaseStoreTests(unittest.TestCase):
         with mock.patch("reverse_craft.common.os.name", "nt"):
             self.assertIsNone(pid_is_alive(1234))
         kill.assert_not_called()
+
+    def test_permission_error_for_existing_lock_is_treated_as_contention(self) -> None:
+        lock_path = self.root / "contended.lock"
+        lock_path.write_text("{}\n", encoding="utf-8")
+        with mock.patch("reverse_craft.common.os.open", side_effect=PermissionError("busy")):
+            with self.assertRaisesRegex(ReverseCraftError, "timed out waiting for lock"):
+                with FileLock(lock_path, timeout=0.01):
+                    self.fail("an inaccessible existing lock must not be acquired")
 
 
 if __name__ == "__main__":
