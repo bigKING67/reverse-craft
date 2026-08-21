@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["skill_name", "skill_version", "route_id", "module_reference", "runtime_truth", "first_action", "mutates", "evidence_chain"],
+  "properties": {
+    "skill_name": {"type": "string", "const": "reverse-craft"},
+    "skill_version": {"type": "string", "const": "0.1.0"},
+    "route_id": {"type": "string", "const": "R3"},
+    "module_reference": {"type": "string", "const": "modules/web-api-identity.md"},
+    "runtime_truth": {"type": "string", "const": "browser67"},
+    "first_action": {"type": "string", "const": "check_browser_health"},
+    "mutates": {"type": "boolean", "const": false},
+    "evidence_chain": {
+      "type": "array",
+      "items": {"type": "string", "enum": ["Evidence", "Finding", "Path", "Report"]},
+      "minItems": 4,
+      "maxItems": 4
+    }
+  },
+  "additionalProperties": false
+}
