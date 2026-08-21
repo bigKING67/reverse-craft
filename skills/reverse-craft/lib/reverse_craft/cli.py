@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Any, Sequence
+from typing import Any, Sequence, TextIO
 
 from . import __version__
 from .case_store import (
@@ -23,11 +23,25 @@ from .routing import route
 from .setup_ops import apply_plan, create_plan, setup_status
 
 
-def _print(value: Any, as_json: bool = True) -> None:
+def _write_text(value: str, stream: TextIO) -> None:
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    try:
+        value.encode(encoding)
+    except (LookupError, UnicodeEncodeError):
+        value = value.encode("unicode_escape").decode("ascii")
+    stream.write(value + "\n")
+
+
+def _print(value: Any, as_json: bool = True, stream: TextIO | None = None) -> None:
+    target = stream or sys.stdout
+    rendered = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) if as_json else str(value)
     if as_json:
-        print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
-    else:
-        print(value)
+        encoding = getattr(target, "encoding", None) or "utf-8"
+        try:
+            rendered.encode(encoding)
+        except (LookupError, UnicodeEncodeError):
+            rendered = json.dumps(value, ensure_ascii=True, indent=2, sort_keys=True)
+    _write_text(rendered, target)
 
 
 def _add_common_home(parser: argparse.ArgumentParser) -> None:
@@ -176,10 +190,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         return 0
     except ReverseCraftError as exc:
-        print(json.dumps({"schema": "reverse-craft.error.v1", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        _print({"schema": "reverse-craft.error.v1", "error": str(exc)}, stream=sys.stderr)
         return 2
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

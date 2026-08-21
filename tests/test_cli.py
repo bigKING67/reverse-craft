@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -8,6 +10,8 @@ import unittest
 from pathlib import Path
 
 from test_support import ROOT
+
+from reverse_craft.cli import _print
 
 CLI = ROOT / "skills" / "reverse-craft" / "scripts" / "reverse_craft.py"
 
@@ -26,6 +30,28 @@ class CliTests(unittest.TestCase):
         self.assertEqual(0, completed.returncode, completed.stderr)
         self.assertEqual("R3", json.loads(completed.stdout)["primary"]["id"])
 
+    def test_json_output_falls_back_to_ascii_on_legacy_console(self) -> None:
+        raw = io.BytesIO()
+        stream = io.TextIOWrapper(raw, encoding="cp1252")
+        _print({"message": "中文"}, stream=stream)
+        stream.flush()
+        rendered = raw.getvalue().decode("cp1252")
+        self.assertEqual({"message": "中文"}, json.loads(rendered))
+
+    def test_route_json_on_legacy_console_encoding(self) -> None:
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "cp1252"
+        completed = subprocess.run(
+            [sys.executable, str(CLI), "route", "--hint", "JS reverse request signature", "--json"],
+            text=True,
+            capture_output=True,
+            timeout=20,
+            check=False,
+            env=env,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual("R3", json.loads(completed.stdout)["primary"]["id"])
+
     def test_invalid_case_returns_structured_error(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             completed = self.run_cli("case", "status", "--case", "../escape", "--home", raw)
@@ -35,4 +61,3 @@ class CliTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

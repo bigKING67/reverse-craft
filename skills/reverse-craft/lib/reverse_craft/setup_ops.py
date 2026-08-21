@@ -67,10 +67,15 @@ PACKAGES = {
 }
 
 
+def _has_root_privileges() -> bool:
+    geteuid = getattr(os, "geteuid", None)
+    return callable(geteuid) and geteuid() == 0
+
+
 def _manager() -> str | None:
     if shutil.which("brew"):
         return "brew"
-    if shutil.which("apt-get") and hasattr(os, "geteuid") and os.geteuid() == 0:
+    if shutil.which("apt-get") and _has_root_privileges():
         return "apt-get"
     if shutil.which("winget"):
         return "winget"

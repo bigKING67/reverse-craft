@@ -90,7 +90,7 @@ class SetupAndProvenanceTests(unittest.TestCase):
     def test_non_privileged_apt_is_plan_only(self, which: mock.Mock) -> None:
         values = {"brew": None, "apt-get": "/usr/bin/apt-get", "winget": None, "jq": None}
         which.side_effect = lambda name: values.get(name)
-        with tempfile.TemporaryDirectory() as raw, mock.patch("reverse_craft.setup_ops.os.geteuid", return_value=1000):
+        with tempfile.TemporaryDirectory() as raw, mock.patch("reverse_craft.setup_ops._has_root_privileges", return_value=False):
             receipt = create_plan("core", str(Path(raw) / "plan.json"), str(Path(raw) / "home"))
             self.assertEqual(0, receipt["actions"])
             self.assertIn("jq", {item["tool"] for item in receipt["unavailable"]})
