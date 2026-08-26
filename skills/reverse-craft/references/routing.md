@@ -11,8 +11,11 @@ For each route rule:
 2. Every `mustAll` expression must match.
 3. `exclude`, when present, vetoes that rule.
 4. Each satisfied rule adds one point to the route.
-5. Highest score wins; ties use the declared `priority` order.
-6. No match falls back to `R0`.
+5. A rule marked `fallbackOnly=true` contributes only when no non-fallback route matched. This keeps
+   broad `R0` reverse/逆向 grammar from creating a false tie with a specific specialist route while
+   preserving R0's OLLVM, anti-debug, emulator, debugger, and other specialist rules.
+6. Highest score wins; ties use the declared `priority` order.
+7. No match falls back to `R0`.
 
 The output includes every positive candidate, matched rule notes, primary module reference, and
 `ambiguous=true` when another route has the winning score. Treat ambiguity as a reason to inspect the

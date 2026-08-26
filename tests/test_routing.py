@@ -30,6 +30,25 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual("R12", route("OAuth API authorization")["primary"]["id"])
         self.assertEqual("R17", route("CTF pwn ROP challenge")["primary"]["id"])
 
+    def test_common_js_signing_language_routes_to_r3_without_fallback_ambiguity(self) -> None:
+        hints = (
+            "逆向网页请求签名参数并定位 JavaScript 加密函数",
+            "browser JavaScript reverse engineering request signing crypto hook environment emulation",
+            "JS逆向 签名参数 加密参数 补环境 Hook注入 request signing token生成",
+        )
+        for hint in hints:
+            with self.subTest(hint=hint):
+                result = route(hint)
+                self.assertEqual("R3", result["primary"]["id"])
+                self.assertFalse(result["ambiguous"])
+                self.assertNotIn("R0", [item["id"] for item in result["secondary"]])
+
+    def test_r0_specialist_rule_can_still_form_a_real_tie(self) -> None:
+        result = route("GDB inspect sample.elf")
+        self.assertEqual("R6", result["primary"]["id"])
+        self.assertTrue(result["ambiguous"])
+        self.assertEqual(["R6", "R0"], result["tied"])
+
     def test_cti_intent_wins_malware_tie_and_preserves_secondary(self) -> None:
         result = route(
             "Use public sources to enrich malware IOCs and correlate an actor campaign"

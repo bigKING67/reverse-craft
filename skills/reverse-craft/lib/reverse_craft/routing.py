@@ -71,6 +71,7 @@ def route(hint: str, artifact: str | None = None) -> dict[str, Any]:
     combined = f" {hint.strip()} " + (artifact_data.get("routing_text", "") if artifact_data else "")
     routes = config["routes"]
     priority = config["priority"]
+    fallback = config["meta"]["fallbackId"]
     candidates: list[dict[str, Any]] = []
     for route_id in priority:
         route_def = routes[route_id]
@@ -82,7 +83,11 @@ def route(hint: str, artifact: str | None = None) -> dict[str, Any]:
                 continue
             if _matches(rule.get("exclude"), combined):
                 continue
-            matched.append({"rule_index": index, "note": rule.get("note")})
+            matched.append({
+                "rule_index": index,
+                "note": rule.get("note"),
+                "fallback_only": rule.get("fallbackOnly") is True,
+            })
         if matched:
             candidates.append({
                 "id": route_id,
@@ -91,6 +96,21 @@ def route(hint: str, artifact: str | None = None) -> dict[str, Any]:
                 "priority": priority.index(route_id),
                 "matched_rules": matched,
             })
+    if any(item["id"] != fallback for item in candidates):
+        adjusted: list[dict[str, Any]] = []
+        for item in candidates:
+            if item["id"] == fallback:
+                item["matched_rules"] = [
+                    rule for rule in item["matched_rules"] if not rule["fallback_only"]
+                ]
+                item["score"] = len(item["matched_rules"])
+                if not item["matched_rules"]:
+                    continue
+            adjusted.append(item)
+        candidates = adjusted
+    for item in candidates:
+        for rule in item["matched_rules"]:
+            rule.pop("fallback_only", None)
     if candidates:
         candidates.sort(key=lambda item: (-item["score"], item["priority"]))
         candidates = [{**item, **modules[item["id"]]} for item in candidates]
@@ -98,7 +118,6 @@ def route(hint: str, artifact: str | None = None) -> dict[str, Any]:
         winning_score = primary["score"]
         tied = [item["id"] for item in candidates if item["score"] == winning_score]
     else:
-        fallback = config["meta"]["fallbackId"]
         primary = {
             "id": fallback,
             "label": routes[fallback]["label"],

@@ -30,7 +30,8 @@
       "label": "JS / frontend reverse",
       "skill": "js-reverse/SKILL.md",
       "keywords": [
-        { "must": "js.?reverse|webpack|cryptojs|frontend.?sign|jshook|cdp|encrypted.?param|前端.?签名|js.?逆向|加密.?参数|webpack.?逆向|抓包|http.?capture|请求.?重放|request.?replay|js.?加密|js.?解密|前端.?加密", "note": "抓包/HTTP 捕获/请求重放 属 JS 前端链路 (anything-analyzer)" }
+        { "must": "js.?reverse|javascript.?reverse|browser.?javascript.?reverse|webpack|cryptojs|frontend.?sign|jshook|cdp|encrypted.?param|前端.?签名|js.?逆向|javascript.?逆向|加密.?参数|webpack.?逆向|抓包|http.?capture|请求.?重放|request.?replay|js.?加密|js.?解密|前端.?加密|网页.?请求.?签名", "note": "抓包/HTTP 捕获/请求重放 属 JS 前端链路 (anything-analyzer)" },
+        { "must": "request.?sign(?:ing|ature)?|sign(?:ing|ature).?param|请求.?签名|签名.?参数|补.?环境|hook.?注入|environment.?emulat", "mustAll": ["\\bjs\\b|javascript|browser|frontend|webpack|cryptojs|前端|网页"], "note": "请求签名、签名参数、补环境和 Hook 注入需带明确 JS/browser 语境" }
       ]
     },
     "R4": {
@@ -318,7 +319,7 @@
       "keywords": [
         { "must": "ollvm|anti-?debug|unicorn|angr|gdb|deobfuscat|控制流平坦|反调试|unity|il2cpp|游戏.?逆向|game.?reverse|anti-?cheat|反作弊", "note": "Unity/游戏逆向归通用逆向 (seed-014)" },
         { "must": "frida", "exclude": "\\bapk\\b|smali|jadx|android|安卓", "note": "APK 语境下 frida 归 R1" },
-        { "must": "reverse|逆向", "exclude": "apk|js.?reverse|ios|mobile|\\.net|firmware|malware|安卓|固件|恶意|protocol|ghidra|extension|macos|mach|golang|rust|工控|厚客户端|取证|协议|扩展", "note": "泛逆向兜底；命中更具体域时让位" }
+        { "must": "reverse|逆向", "exclude": "apk|js.?reverse|ios|mobile|\\.net|firmware|malware|安卓|固件|恶意|protocol|ghidra|extension|macos|mach|golang|rust|工控|厚客户端|取证|协议|扩展", "fallbackOnly": true, "note": "泛逆向兜底；命中更具体域时让位" }
       ]
     }
   },

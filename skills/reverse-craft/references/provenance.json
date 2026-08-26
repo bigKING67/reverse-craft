@@ -1,6 +1,6 @@
 {
   "schema": "reverse-craft.provenance.v1",
-  "generated_at": "2026-08-26T13:05:18Z",
+  "generated_at": "2026-08-26T13:39:21Z",
   "sources": [
     {
       "id": "browser67",
@@ -32,8 +32,8 @@
       "scope": "installed",
       "source": "reverse-skill:skills/config/routing.json",
       "classification": "adapted",
-      "adaptation": "R44 CTI/OSINT triggers absorbed; action-first IOC enrichment grammar added; explicit R44 intent is prioritized before R9 malware analysis",
-      "sha256": "f08e298d7d0ce37e1b245e0760eb36026e6e19a826f91a193ef6efd00ca73cf1"
+      "adaptation": "R44 CTI/OSINT triggers absorbed; action-first IOC enrichment grammar added; explicit R44 intent is prioritized before R9 malware analysis; R3 bilingual request-signing and JS environment grammar added; generic R0 fallback-only semantics added",
+      "sha256": "f2f0b1a4d2e588f4d59ddccc6c56ff03df787743d5c8b6e9351a409e4ba954ed"
     },
     {
       "path": "skills/reverse-craft/lib/reverse_craft/routing.py",

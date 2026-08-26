@@ -4,7 +4,7 @@
     "R0": ["OLLVM control flow flattening", "anti-debug logic in an unknown executable", "use angr to solve a branch", "Unicorn emulate checksum routine", "GDB trace stripped executable", "IL2CPP game reverse"],
     "R1": ["APK certificate pinning bypass analysis", "jadx inspect Android application", "apktool rebuild package", "patch a smali method", "分析 APK 的 root 检测", "安卓重打包和签名校验"],
     "R2": ["IPA iOS reverse engineering", "Objection inspect an IPA", "MobSF mobile reverse", "iPhone and iOS mobile reverse", "iPhone 越狱环境逆向", "iOS 逆向应用保护"],
-    "R3": ["JS reverse request signature", "webpack encrypted parameter", "CryptoJS frontend signing", "前端签名参数逆向", "请求重放定位 JS 加密", "jshook trace browser token"],
+    "R3": ["JS reverse request signature", "webpack encrypted parameter", "CryptoJS frontend signing", "前端签名参数逆向", "请求重放定位 JS 加密", "jshook trace browser token", "逆向网页请求签名参数并定位 JavaScript 加密函数", "browser JavaScript reverse engineering request signing", "JavaScript environment emulation for request signature", "前端补环境并 Hook 注入签名函数", "browser request signing token generation", "locate signing parameters in a frontend bundle"],
     "R4": ["DSL VM opcode recovery", "Fireye DSL VM", "custom VM dispatcher", "自定义虚拟机指令集", "opcode VM reverse", "DSL VM 虚拟机逆向"],
     "R5": [".NET ConfuserEx sample", "dnSpy inspect C# assembly", "de4dot managed executable", "dotnet reverse loader", "C# 程序逆向", ".NET 反混淆"],
     "R6": ["IDA decompile ELF", "disassemble native shared library", "binary disassembly analysis", "反编译 so 文件", "JNI native analysis", "IDA 反汇编函数"],
