@@ -28,3 +28,7 @@ external immutable history.
 
 Record target hash/version, tool versions, exact entry command, inputs, expected decisive output, environment
 differences, and reset/cleanup steps. Prefer small command snippets and evidence references over raw log dumps.
+
+The deterministic Evidence projection includes source, acquisition method, observation time, optional note,
+hash, size, and stored or external location. Free-text metadata is rendered as a single-line Markdown code span
+so source content cannot inject headings, lists, HTML, or additional report fields.

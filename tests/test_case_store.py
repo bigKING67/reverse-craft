@@ -255,6 +255,48 @@ class CaseStoreTests(unittest.TestCase):
 
         self.assertTrue(validate_case(case_id, str(self.home))["valid"])
 
+    def test_report_renders_evidence_provenance_and_empty_note(self) -> None:
+        case_id = self.new_case()
+        evidence = add_evidence(
+            case_id,
+            str(self.artifact),
+            "public-source-html",
+            note="",
+            source="https://example.test/advisory",
+            home=str(self.home),
+        )["evidence"]
+
+        report = render_report(case_id, home=str(self.home))
+        content = Path(report["path"]).read_text(encoding="utf-8")
+
+        self.assertIn(f"- `{evidence['id']}` `public-source-html`:", content)
+        self.assertIn("  - Source: `https://example.test/advisory`", content)
+        self.assertIn("  - Acquisition: `verified-copy`", content)
+        self.assertIn(f"  - Observed at: `{evidence['observed_at']}`", content)
+        self.assertIn("  - Note: not recorded", content)
+
+    def test_report_evidence_free_text_cannot_inject_markdown_structure(self) -> None:
+        case_id = self.new_case()
+        source = "https://example.test/`source``\n# forged heading"
+        note = "`first line\n- forged item with `inline` code`"
+        add_evidence(
+            case_id,
+            str(self.artifact),
+            "public`source",
+            note=note,
+            source=source,
+            home=str(self.home),
+        )
+
+        report = render_report(case_id, home=str(self.home))
+        content = Path(report["path"]).read_text(encoding="utf-8")
+
+        self.assertIn("``public`source``", content)
+        self.assertIn("  - Source: ```https://example.test/`source`` # forged heading```", content)
+        self.assertIn("  - Note: `` `first line - forged item with `inline` code` ``", content)
+        self.assertNotIn("\n# forged heading", content)
+        self.assertNotIn("\n- forged item", content)
+
     def test_finding_requires_known_evidence(self) -> None:
         case_id = self.new_case()
         with self.assertRaises(ReverseCraftError):

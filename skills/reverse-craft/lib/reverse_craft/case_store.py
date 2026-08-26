@@ -252,6 +252,23 @@ def re_safe_filename(name: str) -> str:
     return cleaned or "artifact.bin"
 
 
+def _markdown_code_span(value: Any) -> str:
+    text = " ".join(str(value or "").split())
+    if not text:
+        return "not recorded"
+    longest_run = 0
+    current_run = 0
+    for character in text:
+        if character == "`":
+            current_run += 1
+            longest_run = max(longest_run, current_run)
+        else:
+            current_run = 0
+    fence = "`" * (longest_run + 1)
+    padding = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{padding}{text}{padding}{fence}"
+
+
 def add_finding(
     case_id: str,
     title: str,
@@ -420,7 +437,14 @@ def render_report(case_id: str, output: str | None = None, home: str | None = No
             lines.append("No evidence recorded.")
         for item in evidence:
             location = item.get("stored_path") or item.get("external_path")
-            lines.append(f"- `{item['id']}` {item['kind']}: `{item['sha256']}` ({item['size']} bytes, `{location}`)")
+            lines.extend([
+                f"- `{item['id']}` {_markdown_code_span(item['kind'])}: `{item['sha256']}` "
+                f"({item['size']} bytes, {_markdown_code_span(location)})",
+                f"  - Source: {_markdown_code_span(item['source'])}",
+                f"  - Acquisition: {_markdown_code_span(item['acquisition'])}",
+                f"  - Observed at: {_markdown_code_span(item['observed_at'])}",
+                f"  - Note: {_markdown_code_span(item.get('note'))}",
+            ])
         lines.extend([
             "",
             "## Verification and limitations",
