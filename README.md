@@ -81,10 +81,13 @@ $RC setup apply --plan /tmp/reverse-craft-plan.json --sha256 <printed-sha256> --
 npm run check:all
 npm run test:hosts          # 真实 Codex + Pi，可用时运行
 npm run test:hosts:cti      # 真实 Codex + Pi 的 R44/CTI 发现与边界探针
-npm run check:browser67     # 真实 MCP initialize -> tools/list -> tools/call
+python3 scripts/check_browser67_mcp.py --surface-only  # 只读 MCP surface + health
+npm run check:browser67     # 完整 managed fixture/evidence/rebuild/finalize
 ```
 
-基础门禁不把真实宿主或真实 browser67 结果冒充为已验证；三类证据单独报告。
+`--surface-only` 不创建、采用、清理或关闭 tab，也不写 evidence/rebuild artifacts。完整 browser67 gate
+只操作自己创建的 localhost fixture，并以 scoped `finalize_task` 收口。基础门禁不把真实宿主或真实
+browser67 结果冒充为已验证；三类证据单独报告。
 
 ## 项目状态
 

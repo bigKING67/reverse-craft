@@ -36,15 +36,22 @@ python3 scripts/run_scenario_bank.py
 python3 scripts/run_host_eval.py --host all
 python3 scripts/run_host_eval.py --host all --profile r44
 python3 scripts/run_host_eval.py --profile r44 --regrade-receipt /path/to/source-receipt.json
+python3 scripts/check_browser67_mcp.py --surface-only
 python3 scripts/check_browser67_mcp.py
 ```
 
-The last two commands are intentionally outside `check:all`: they depend on authenticated/local runtimes and must be
-reported as live evidence with host versions and current pins. Each host/profile runs once without success-selecting
+Host and browser67 commands are intentionally outside `check:all`: they depend on authenticated/local runtimes and must
+be reported as live evidence with host versions and current pins. Each host/profile runs once without success-selecting
 retries. Pi receives only its read-only file tool; Codex runs in a read-only sandbox. Both may load Skill instructions
 and references, which is required by their progressive-disclosure Skill model. The host receipt proves real process
 execution, a content-bound Skill snapshot, and blind semantic output-contract compatibility; it does not replace a live
 browser lifecycle or a real public-source intelligence case.
+
+`--surface-only` performs MCP `initialize`, `tools/list`, and read-only browser health only. It never runs orphan
+cleanup, creates/adopts/closes a tab, records evidence, exports a rebuild bundle, or calls `finalize_task`; its receipt
+reports `orphan_cleanup.status=not_requested`. The full browser67 gate may close only an exact stale Reverse Craft
+localhost fixture before creating its own managed fixture. It then records evidence, exports the four-file rebuild
+bundle, and requires scoped finalization with zero close errors. Neither mode adopts or closes unrelated user tabs.
 
 `--regrade-receipt` never calls a Host. It is only for correcting a private grader label after a real run: the source
 receipt's profile, prompt hashes, response-schema hash, Skill identity, per-Host invocation hashes, snapshots, exit

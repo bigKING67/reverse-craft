@@ -37,7 +37,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate browser67 js-reverse through real MCP JSON-RPC")
     parser.add_argument("--browser67-home")
     parser.add_argument("--timeout", type=int, default=30)
-    parser.add_argument("--surface-only", action="store_true", help="skip live managed-tab fixture calls")
+    parser.add_argument(
+        "--surface-only",
+        action="store_true",
+        help="skip managed-tab cleanup, fixture, evidence, rebuild, and finalize calls",
+    )
     parser.add_argument("--allow-head-drift", action="store_true")
     return parser.parse_args()
 
@@ -208,6 +212,25 @@ def cleanup_fixture_orphans(home: Path, js_client: McpClient, timeout: int) -> i
     return closed
 
 
+def maybe_cleanup_fixture_orphans(
+    surface_only: bool,
+    home: Path,
+    js_client: McpClient,
+    timeout: int,
+) -> dict[str, Any]:
+    if surface_only:
+        return {
+            "status": "not_requested",
+            "reason": "surface_only",
+            "closed_count": 0,
+        }
+    return {
+        "status": "executed",
+        "reason": "full_live_gate",
+        "closed_count": cleanup_fixture_orphans(home, js_client, timeout),
+    }
+
+
 def main() -> int:
     args = parse_args()
     server: ThreadingHTTPServer | None = None
@@ -236,13 +259,19 @@ def main() -> int:
         required = {"check_browser_health", "new_page", "record_reverse_evidence", "export_rebuild_bundle", "finalize_task"}
         if not required.issubset(names):
             raise RuntimeError(f"required tools missing: {sorted(required - set(names))}")
-        orphan_cleanup_count = cleanup_fixture_orphans(home, client, args.timeout)
+        orphan_cleanup = maybe_cleanup_fixture_orphans(
+            args.surface_only,
+            home,
+            client,
+            args.timeout,
+        )
         health = client.tool("check_browser_health", {})
         health_data = health.get("data") or {}
         results.update({
             "initialize": initialized["serverInfo"],
             "tools_count": len(names),
-            "orphan_cleanup_count": orphan_cleanup_count,
+            "orphan_cleanup": orphan_cleanup,
+            "orphan_cleanup_count": orphan_cleanup["closed_count"],
             "health": {
                 **selected_fields(health_data, ("mode", "ok", "pages_count", "transport")),
                 "ready": (health_data.get("readiness") or {}).get("ready"),
