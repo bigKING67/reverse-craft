@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -14,34 +15,164 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills" / "reverse-craft"
 SCHEMA = ROOT / "tests" / "fixtures" / "host-response.schema.json"
+EVALUATION_MODE = "blind-contract"
+SKILL_NAME = "reverse-craft"
+OUTPUT_FIELDS = "route_id, module_reference, runtime_truth, mutates, evidence_chain"
+
+
+def evaluation_prompt(task: str) -> str:
+    return f"""{task} Load the explicitly invoked Skill and follow its deterministic routing instructions. You may inspect only files inside that Skill and, when the host supports it, run only its dependency-free read-only route command. Do not access a network or target, modify files, or invent routes or metadata. Return exactly one JSON object with these fields: {OUTPUT_FIELDS}. route_id, module_reference, and runtime_truth must be JSON strings; mutates must be a JSON boolean; evidence_chain must be a JSON array of strings. Copy route_id and module_reference exactly from the primary deterministic route; if the route command is unavailable, read its route/module data and preserve the full reference string without shortening it. For runtime_truth, copy the shortest exact name or phrase used by the Skill for the canonical runtime or default public collection mechanism. Use the Skill's exact evidence labels and order. Do not explain the result or use Markdown."""
+
+
 PROFILES = {
     "r3": {
-        "prompt": """Use $reverse-craft for this read-only planning question. An authorized sandbox task asks you to reverse a browser request signature. No artifact or live browser is available yet. Return exactly one JSON object with these exact values and no Markdown: {\"skill_name\":\"reverse-craft\",\"skill_version\":\"0.1.0\",\"route_id\":\"R3\",\"module_reference\":\"modules/web-api-identity.md\",\"runtime_truth\":\"browser67\",\"first_action\":\"check_browser_health\",\"mutates\":false,\"evidence_chain\":[\"Evidence\",\"Finding\",\"Path\",\"Report\"]}. Do not call tools or modify files.""",
+        "task": "An authorized sandbox task asks for a read-only planning decision about reconstructing a frontend-signing chain behind a browser request. No artifact or live browser is available.",
         "expected": {
-            "skill_name": "reverse-craft",
-            "skill_version": "0.1.0",
             "route_id": "R3",
             "module_reference": "modules/web-api-identity.md",
             "runtime_truth": "browser67",
-            "first_action": "check_browser_health",
             "mutates": False,
             "evidence_chain": ["Evidence", "Finding", "Path", "Report"],
         },
     },
     "r44": {
-        "prompt": """Use $reverse-craft for this read-only planning question. An authorized task asks you to enrich a malware IOC from public sources and prepare a CTI handoff. No source lookup is authorized or available yet. Return exactly one JSON object with these exact values and no Markdown: {\"skill_name\":\"reverse-craft\",\"skill_version\":\"0.1.0\",\"route_id\":\"R44\",\"module_reference\":\"modules/threat-intelligence-osint.md\",\"runtime_truth\":\"public_source_evidence\",\"first_action\":\"define_intelligence_question\",\"mutates\":false,\"evidence_chain\":[\"Evidence\",\"Finding\",\"Path\",\"Report\"]}. Do not call tools or modify files.""",
+        "task": "An authorized analyst asks for a read-only planning decision about enriching a malware IOC from public sources and preparing an intelligence handoff. No source lookup is authorized or available.",
         "expected": {
-            "skill_name": "reverse-craft",
-            "skill_version": "0.1.0",
             "route_id": "R44",
             "module_reference": "modules/threat-intelligence-osint.md",
-            "runtime_truth": "public_source_evidence",
-            "first_action": "define_intelligence_question",
+            "runtime_truth": "normal Web search",
             "mutates": False,
             "evidence_chain": ["Evidence", "Finding", "Path", "Report"],
         },
     },
 }
+for _profile in PROFILES.values():
+    _profile["prompt"] = evaluation_prompt(_profile["task"])
+
+
+def string_leaves(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [leaf for item in value.values() for leaf in string_leaves(item)]
+    if isinstance(value, (list, tuple)):
+        return [leaf for item in value for leaf in string_leaves(item)]
+    return []
+
+
+def semantic_schema_keywords(value: Any, path: str = "$") -> list[str]:
+    findings: list[str] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            child = f"{path}.{key}"
+            if key in {"const", "enum"}:
+                findings.append(child)
+            findings.extend(semantic_schema_keywords(item, child))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            findings.extend(semantic_schema_keywords(item, f"{path}[{index}]"))
+    return findings
+
+
+def unsupported_schema_keywords(value: Any, path: str = "$") -> list[str]:
+    findings: list[str] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            child = f"{path}.{key}"
+            if key == "uniqueItems":
+                findings.append(child)
+            findings.extend(unsupported_schema_keywords(item, child))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            findings.extend(unsupported_schema_keywords(item, f"{path}[{index}]"))
+    return findings
+
+
+def expectation_exposure_errors(prompt: str, expected: dict[str, Any], response_schema: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    schema_text = json.dumps(response_schema, ensure_ascii=False, sort_keys=True)
+    for value in sorted(set(string_leaves(expected))):
+        if value in prompt:
+            errors.append(f"prompt exposes expected value: {value}")
+        if value in schema_text:
+            errors.append(f"response schema exposes expected value: {value}")
+    for path in semantic_schema_keywords(response_schema):
+        errors.append(f"response schema contains answer-bearing constraint: {path}")
+    for path in unsupported_schema_keywords(response_schema):
+        errors.append(f"response schema contains unsupported constraint: {path}")
+    return errors
+
+
+def skill_source_files(root: Path = SKILL) -> list[Path]:
+    return sorted(
+        path for path in root.rglob("*")
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"
+    )
+
+
+def skill_bundle_sha256(root: Path = SKILL) -> str:
+    digest = hashlib.sha256()
+    for path in skill_source_files(root):
+        relative = path.relative_to(root).as_posix().encode("utf-8")
+        content = path.read_bytes()
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
+def skill_identity(root: Path = SKILL) -> dict[str, Any]:
+    entrypoint = root / "SKILL.md"
+    version_file = root / "VERSION"
+    return {
+        "name": SKILL_NAME,
+        "version": version_file.read_text(encoding="utf-8").strip(),
+        "path": str(root),
+        "entrypoint_sha256": hashlib.sha256(entrypoint.read_bytes()).hexdigest(),
+        "bundle_sha256": skill_bundle_sha256(root),
+        "source_file_count": len(skill_source_files(root)),
+    }
+
+
+def host_prompt(host: str, prompt: str) -> str:
+    if host == "codex":
+        return f"Use ${SKILL_NAME} for this evaluation.\n\n{prompt}"
+    if host == "pi":
+        return f"/skill:{SKILL_NAME} {prompt}"
+    raise ValueError(f"unsupported host: {host}")
+
+
+def expected_contract_sha256(expected: dict[str, Any]) -> str:
+    encoded = json.dumps(expected, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def canonical_json_sha256(value: Any) -> str:
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def evaluation_receipt(prompt: str, schema_bytes: bytes, expected: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "evaluation_mode": EVALUATION_MODE,
+        "expectation_exposed": False,
+        "evaluation_prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+        "host_prompt_sha256": {
+            host: hashlib.sha256(host_prompt(host, prompt).encode("utf-8")).hexdigest()
+            for host in ("codex", "pi")
+        },
+        "response_schema_sha256": hashlib.sha256(schema_bytes).hexdigest(),
+        "expected_contract_sha256": expected_contract_sha256(expected),
+        "skill": skill_identity(),
+    }
+
+
+def materialize_skill(target: Path) -> dict[str, Any]:
+    shutil.copytree(SKILL, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    identity = skill_identity(target)
+    identity["path"] = str(target)
+    return identity
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,6 +181,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--profile", choices=sorted(PROFILES), default="r3")
     parser.add_argument("--timeout", type=int, default=240)
     parser.add_argument("--allow-missing", action="store_true")
+    parser.add_argument("--regrade-receipt")
     parser.add_argument("--output")
     return parser.parse_args()
 
@@ -96,10 +228,8 @@ def run_codex(workspace: Path, timeout: int, prompt: str, expected: dict[str, An
         return {"host": "codex", "status": "missing", "valid": False}
     skill_target = workspace / ".agents" / "skills" / "reverse-craft"
     skill_target.parent.mkdir(parents=True)
-    try:
-        skill_target.symlink_to(SKILL, target_is_directory=True)
-    except OSError:
-        shutil.copytree(SKILL, skill_target)
+    snapshot = materialize_skill(skill_target)
+    prompt = host_prompt("codex", prompt)
     output = workspace / "codex-output.json"
     codex_env = {**os.environ, "NO_COLOR": "1"}
     # A generic OPENAI_API_KEY can override Codex's own authenticated account.
@@ -121,10 +251,14 @@ def run_codex(workspace: Path, timeout: int, prompt: str, expected: dict[str, An
     except Exception as exc:
         payload = None
         errors = [f"{type(exc).__name__}: {exc}"]
+    if snapshot["bundle_sha256"] != skill_bundle_sha256():
+        errors.append("materialized Skill snapshot does not match source bundle")
     return {
         "host": "codex", "status": "passed" if completed.returncode == 0 and not errors else "failed",
         "valid": completed.returncode == 0 and not errors, "exit_code": completed.returncode,
         "version": subprocess.run([binary, "--version"], text=True, capture_output=True, timeout=10, check=False).stdout.strip(),
+        "invocation": {"mode": "explicit", "syntax": f"${SKILL_NAME}", "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest()},
+        "skill_snapshot": snapshot,
         "payload": payload, "errors": errors,
         "stderr_tail": safe_error_tail(completed.stderr) if completed.returncode else "",
     }
@@ -136,11 +270,15 @@ def run_pi(workspace: Path, timeout: int, prompt: str, expected: dict[str, Any])
         return {"host": "pi", "status": "missing", "valid": False}
     session_dir = workspace / "pi-sessions"
     session_dir.mkdir()
+    skill_target = workspace / "eval-skills" / "reverse-craft"
+    skill_target.parent.mkdir()
+    snapshot = materialize_skill(skill_target)
+    prompt = host_prompt("pi", prompt)
     env = {**os.environ, "PI_CODING_AGENT_SESSION_DIR": str(session_dir), "NO_COLOR": "1"}
     completed = subprocess.run(
         [
-            binary, "--print", "--no-session", "--no-extensions", "--no-context-files", "--no-tools",
-            "--skill", str(SKILL), prompt,
+            binary, "--print", "--no-session", "--no-extensions", "--no-context-files", "--no-skills",
+            "--tools", "read", "--skill", str(skill_target), prompt,
         ],
         cwd=workspace, text=True, capture_output=True, timeout=timeout, check=False, env=env,
     )
@@ -150,19 +288,162 @@ def run_pi(workspace: Path, timeout: int, prompt: str, expected: dict[str, Any])
     except Exception as exc:
         payload = None
         errors = [f"{type(exc).__name__}: {exc}"]
+    if snapshot["bundle_sha256"] != skill_bundle_sha256():
+        errors.append("materialized Skill snapshot does not match source bundle")
     return {
         "host": "pi", "status": "passed" if completed.returncode == 0 and not errors else "failed",
         "valid": completed.returncode == 0 and not errors, "exit_code": completed.returncode,
         "version": subprocess.run([binary, "--version"], text=True, capture_output=True, timeout=10, check=False).stdout.strip(),
+        "invocation": {"mode": "explicit", "syntax": f"/skill:{SKILL_NAME}", "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest()},
+        "skill_snapshot": snapshot,
         "payload": payload, "errors": errors,
         "stderr_tail": safe_error_tail(completed.stderr) if completed.returncode else "",
     }
+
+
+def stable_skill_identity(value: dict[str, Any]) -> dict[str, Any]:
+    keys = ("name", "version", "entrypoint_sha256", "bundle_sha256", "source_file_count")
+    return {key: value.get(key) for key in keys}
+
+
+def regrade_receipt(
+    source_path: Path,
+    profile_name: str,
+    profile: dict[str, Any],
+    schema_bytes: bytes,
+) -> dict[str, Any]:
+    source_bytes = source_path.read_bytes()
+    source = json.loads(source_bytes)
+    current = evaluation_receipt(profile["prompt"], schema_bytes, profile["expected"])
+    receipt_errors: list[str] = []
+
+    def require_equal(label: str, actual: Any, expected: Any) -> None:
+        if actual != expected:
+            receipt_errors.append(f"{label}: expected {expected!r}, got {actual!r}")
+
+    require_equal("source schema", source.get("schema"), "reverse-craft.host-eval.v2")
+    require_equal("source evaluation mode", source.get("evaluation_mode"), EVALUATION_MODE)
+    require_equal("source profile", source.get("profile"), profile_name)
+    require_equal("source expectation exposure", source.get("expectation_exposed"), False)
+    require_equal(
+        "source evaluation prompt hash",
+        source.get("evaluation_prompt_sha256"),
+        current["evaluation_prompt_sha256"],
+    )
+    require_equal("source host prompt hashes", source.get("host_prompt_sha256"), current["host_prompt_sha256"])
+    require_equal(
+        "source response schema hash",
+        source.get("response_schema_sha256"),
+        current["response_schema_sha256"],
+    )
+    require_equal(
+        "source Skill identity",
+        stable_skill_identity(source.get("skill", {})),
+        stable_skill_identity(current["skill"]),
+    )
+
+    requested = source.get("requested")
+    if not isinstance(requested, list) or not requested or any(host not in {"codex", "pi"} for host in requested):
+        receipt_errors.append(f"source requested hosts are invalid: {requested!r}")
+        requested = []
+    elif len(requested) != len(set(requested)):
+        receipt_errors.append(f"source requested hosts contain duplicates: {requested!r}")
+    source_results = source.get("results")
+    if not isinstance(source_results, list):
+        receipt_errors.append("source results are not an array")
+        source_results = []
+    by_host = {item.get("host"): item for item in source_results if isinstance(item, dict)}
+    require_equal("source result count", len(source_results), len(by_host))
+    require_equal("source result hosts", sorted(by_host), sorted(requested))
+
+    results: list[dict[str, Any]] = []
+    for host in requested:
+        item = by_host.get(host, {})
+        errors: list[str] = []
+        if item.get("exit_code") != 0:
+            errors.append(f"source host exit code is not zero: {item.get('exit_code')!r}")
+        invocation = item.get("invocation") if isinstance(item.get("invocation"), dict) else {}
+        if invocation.get("prompt_sha256") != current["host_prompt_sha256"][host]:
+            errors.append("source host invocation prompt hash does not match")
+        snapshot = item.get("skill_snapshot") if isinstance(item.get("skill_snapshot"), dict) else {}
+        if stable_skill_identity(snapshot) != stable_skill_identity(current["skill"]):
+            errors.append("source host Skill snapshot does not match")
+        payload = item.get("payload")
+        if not isinstance(payload, dict):
+            errors.append("source host payload is not an object")
+            payload_hash = None
+        else:
+            errors.extend(validate_payload(payload, profile["expected"]))
+            payload_hash = canonical_json_sha256(payload)
+        results.append({
+            "host": host,
+            "version": item.get("version"),
+            "source_status": item.get("status"),
+            "source_errors": item.get("errors", []),
+            "payload": payload,
+            "payload_sha256": payload_hash,
+            "errors": errors,
+            "valid": not errors,
+        })
+
+    valid = not receipt_errors and all(item["valid"] for item in results) and bool(results)
+    return {
+        "schema": "reverse-craft.host-eval-regrade.v1",
+        "valid": valid,
+        "profile": profile_name,
+        "requested": requested,
+        "results": results,
+        "errors": receipt_errors,
+        "source_receipt": {
+            "path": str(source_path),
+            "sha256": hashlib.sha256(source_bytes).hexdigest(),
+            "schema": source.get("schema"),
+            "valid": source.get("valid"),
+            "expected_contract_sha256": source.get("expected_contract_sha256"),
+        },
+        **current,
+    }
+
+
+def render_result(payload: dict[str, Any], output: str | None) -> None:
+    rendered = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if output:
+        Path(output).expanduser().resolve().write_text(rendered, encoding="utf-8")
+    print(rendered, end="")
 
 
 def main() -> int:
     args = parse_args()
     profile = PROFILES[args.profile]
     requested = ["codex", "pi"] if args.host == "all" else [args.host]
+    schema_bytes = SCHEMA.read_bytes()
+    response_schema = json.loads(schema_bytes)
+    exposure_errors = []
+    for host in requested:
+        exposure_errors.extend(
+            f"{host}: {error}"
+            for error in expectation_exposure_errors(
+                host_prompt(host, profile["prompt"]), profile["expected"], response_schema,
+            )
+        )
+    receipt = evaluation_receipt(profile["prompt"], schema_bytes, profile["expected"])
+    if exposure_errors:
+        payload = {
+            "schema": "reverse-craft.host-eval.v2", "valid": False, "profile": args.profile,
+            "requested": requested, "missing": [], "results": [], **receipt,
+            "expectation_exposed": True, "errors": exposure_errors,
+        }
+        render_result(payload, args.output)
+        return 2
+    if args.regrade_receipt:
+        payload = regrade_receipt(
+            Path(args.regrade_receipt).expanduser().resolve(),
+            args.profile,
+            profile,
+            schema_bytes,
+        )
+        render_result(payload, args.output)
+        return 0 if payload["valid"] else 1
     results: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="reverse-craft-host-eval-") as raw:
         root = Path(raw)
@@ -181,14 +462,12 @@ def main() -> int:
     missing = [item["host"] for item in results if item["status"] == "missing"]
     valid = all(item["valid"] or (args.allow_missing and item["status"] == "missing") for item in results)
     payload = {
-        "schema": "reverse-craft.host-eval.v1", "valid": valid, "profile": args.profile, "requested": requested,
+        "schema": "reverse-craft.host-eval.v2", "valid": valid, "profile": args.profile, "requested": requested,
         "missing": missing, "results": results,
-        "isolation": {"codex": "ephemeral, ignore rules, hooks/memories/plugins/apps disabled, read-only sandbox", "pi": "no session/extensions/context/tools; temporary session directory"},
+        "isolation": {"codex": "ephemeral, explicit workspace Skill snapshot, ignore rules, hooks/memories/plugins/apps disabled, read-only sandbox", "pi": "explicit Skill snapshot, no session/extensions/context/default skills, read-only file tool only; temporary session directory"},
+        **receipt,
     }
-    rendered = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    if args.output:
-        Path(args.output).expanduser().resolve().write_text(rendered, encoding="utf-8")
-    print(rendered, end="")
+    render_result(payload, args.output)
     return 0 if valid else 1
 
 

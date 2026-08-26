@@ -1,20 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["skill_name", "skill_version", "route_id", "module_reference", "runtime_truth", "first_action", "mutates", "evidence_chain"],
+  "required": ["route_id", "module_reference", "runtime_truth", "mutates", "evidence_chain"],
   "properties": {
-    "skill_name": {"type": "string", "const": "reverse-craft"},
-    "skill_version": {"type": "string", "const": "0.1.0"},
-    "route_id": {"type": "string", "enum": ["R3", "R44"]},
-    "module_reference": {"type": "string", "enum": ["modules/web-api-identity.md", "modules/threat-intelligence-osint.md"]},
-    "runtime_truth": {"type": "string", "enum": ["browser67", "public_source_evidence"]},
-    "first_action": {"type": "string", "enum": ["check_browser_health", "define_intelligence_question"]},
-    "mutates": {"type": "boolean", "const": false},
+    "route_id": {"type": "string"},
+    "module_reference": {"type": "string"},
+    "runtime_truth": {"type": "string"},
+    "mutates": {"type": "boolean"},
     "evidence_chain": {
       "type": "array",
-      "items": {"type": "string", "enum": ["Evidence", "Finding", "Path", "Report"]},
-      "minItems": 4,
-      "maxItems": 4
+      "items": {"type": "string"}
     }
   },
   "additionalProperties": false

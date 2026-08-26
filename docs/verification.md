@@ -9,7 +9,13 @@ Reverse Craft keeps evidence tiers separate:
    MCP secret projection, concurrency, seal, setup tamper rejection.
 3. **Routing bank**: 258 manually curated English/Chinese prompts across all 43 routes, including priority/exclusion cases.
 4. **Offline scenarios**: 11 isolated end-to-end cases through route -> evidence -> finding -> path -> report -> seal.
-5. **Real hosts**: Codex and Pi load the real Skill and return exact R3/browser67 or R44/CTI evidence-contract decisions.
+5. **Real hosts**: Codex and Pi explicitly invoke an isolated copy of the real Skill for realistic planning requests.
+   Their prompts and output schema omit the expected semantic values; the runner validates responses against a private
+   exact R3/browser67 or R44/CTI contract and binds the receipt to the prompt, schema, Skill entrypoint, version, and
+   full source-bundle hash. The private expected contract has its own SHA-256 in the receipt, without being exposed to
+   the Host. Skill identity is a runner-observed fact, not a model-graded guess. The Host contract covers
+   route, full module reference, runtime/source authority, mutation posture, and evidence-chain order. Executable first
+   actions belong to the next runtime-specific tier because availability changes the correct action.
 6. **Live browser runtime**: pinned browser67 process executes MCP `initialize -> tools/list -> tools/call`, sees 60 tools,
    opens a scoped managed fixture tab, records evidence, exports a rebuild bundle, and finalizes the task.
 7. **CI portability**: source/unit/route/scenario gates on Python 3.10 and 3.13 across macOS, Ubuntu, and Windows.
@@ -26,8 +32,18 @@ python3 scripts/run_route_bank.py
 python3 scripts/run_scenario_bank.py
 python3 scripts/run_host_eval.py --host all
 python3 scripts/run_host_eval.py --host all --profile r44
+python3 scripts/run_host_eval.py --profile r44 --regrade-receipt /path/to/source-receipt.json
 python3 scripts/check_browser67_mcp.py
 ```
 
 The last two commands are intentionally outside `check:all`: they depend on authenticated/local runtimes and must be
-reported as live evidence with host versions and current pins.
+reported as live evidence with host versions and current pins. Each host/profile runs once without success-selecting
+retries. Pi receives only its read-only file tool; Codex runs in a read-only sandbox. Both may load Skill instructions
+and references, which is required by their progressive-disclosure Skill model. The host receipt proves real process
+execution, a content-bound Skill snapshot, and blind semantic output-contract compatibility; it does not replace a live
+browser lifecycle or a real public-source intelligence case.
+
+`--regrade-receipt` never calls a Host. It is only for correcting a private grader label after a real run: the source
+receipt's profile, prompt hashes, response-schema hash, Skill identity, per-Host invocation hashes, snapshots, exit
+codes, and raw payloads must still match the current candidate. The regrade preserves the source failure/errors, binds
+the corrected private contract hash, and fails closed on any Host-visible drift or payload mismatch.
