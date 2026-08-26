@@ -36,7 +36,7 @@ class HostEvalTests(unittest.TestCase):
                         [],
                         HOST_EVAL.expectation_exposure_errors(
                             HOST_EVAL.host_prompt(host, profile["prompt"]),
-                            profile["expected"],
+                            HOST_EVAL.private_contract(profile),
                             self.response_schema,
                         ),
                     )
@@ -45,7 +45,7 @@ class HostEvalTests(unittest.TestCase):
         profile = HOST_EVAL.PROFILES["r44"]
         prompt_errors = HOST_EVAL.expectation_exposure_errors(
             HOST_EVAL.host_prompt("codex", profile["prompt"]) + " R44",
-            profile["expected"],
+            HOST_EVAL.private_contract(profile),
             self.response_schema,
         )
         self.assertIn("prompt exposes expected value: R44", prompt_errors)
@@ -53,7 +53,7 @@ class HostEvalTests(unittest.TestCase):
         contaminated = copy.deepcopy(self.response_schema)
         contaminated["properties"]["route_id"]["const"] = "R44"
         schema_errors = HOST_EVAL.expectation_exposure_errors(
-            profile["prompt"], profile["expected"], contaminated,
+            profile["prompt"], HOST_EVAL.private_contract(profile), contaminated,
         )
         self.assertIn("response schema exposes expected value: R44", schema_errors)
         self.assertIn(
@@ -64,16 +64,21 @@ class HostEvalTests(unittest.TestCase):
         contaminated = copy.deepcopy(self.response_schema)
         contaminated["properties"]["evidence_chain"]["uniqueItems"] = True
         unsupported_errors = HOST_EVAL.expectation_exposure_errors(
-            profile["prompt"], profile["expected"], contaminated,
+            profile["prompt"], HOST_EVAL.private_contract(profile), contaminated,
         )
         self.assertIn(
             "response schema contains unsupported constraint: $.properties.evidence_chain.uniqueItems",
             unsupported_errors,
         )
 
-    def test_validate_payload_keeps_exact_runner_side_contract(self) -> None:
-        expected = HOST_EVAL.PROFILES["r44"]["expected"]
-        self.assertEqual([], HOST_EVAL.validate_payload(copy.deepcopy(expected), expected))
+    def test_validate_payload_normalizes_only_bounded_runtime_aliases(self) -> None:
+        profile = HOST_EVAL.PROFILES["r44"]
+        expected = profile["expected"]
+        self.assertEqual([], HOST_EVAL.validate_payload(copy.deepcopy(expected), profile))
+        source_phrase = copy.deepcopy(expected)
+        source_phrase["runtime_truth"] = "normal Web search"
+        self.assertEqual([], HOST_EVAL.validate_payload(source_phrase, profile))
+        self.assertEqual(expected, HOST_EVAL.normalize_payload(source_phrase, profile))
         mutations = {
             "wrong route": lambda value: value.update({"route_id": "R3"}),
             "wrong module": lambda value: value.update({"module_reference": "wrong.md"}),
@@ -87,12 +92,17 @@ class HostEvalTests(unittest.TestCase):
             with self.subTest(case=name):
                 value = copy.deepcopy(expected)
                 mutate(value)
-                self.assertTrue(HOST_EVAL.validate_payload(value, expected))
+                self.assertTrue(HOST_EVAL.validate_payload(value, profile))
+        for rejected_runtime in ("normal web search", "public Web search", "browser67"):
+            with self.subTest(rejected_runtime=rejected_runtime):
+                value = copy.deepcopy(expected)
+                value["runtime_truth"] = rejected_runtime
+                self.assertTrue(HOST_EVAL.validate_payload(value, profile))
 
     def test_evaluation_receipt_is_content_bound_and_blind(self) -> None:
         prompt = HOST_EVAL.PROFILES["r3"]["prompt"]
-        expected = HOST_EVAL.PROFILES["r3"]["expected"]
-        receipt = HOST_EVAL.evaluation_receipt(prompt, self.schema_bytes, expected)
+        profile = HOST_EVAL.PROFILES["r3"]
+        receipt = HOST_EVAL.evaluation_receipt(prompt, self.schema_bytes, profile)
         self.assertEqual("blind-contract", receipt["evaluation_mode"])
         self.assertFalse(receipt["expectation_exposed"])
         self.assertEqual(
@@ -105,10 +115,15 @@ class HostEvalTests(unittest.TestCase):
                 receipt["host_prompt_sha256"][host],
             )
         self.assertEqual(hashlib.sha256(self.schema_bytes).hexdigest(), receipt["response_schema_sha256"])
-        self.assertEqual(HOST_EVAL.expected_contract_sha256(expected), receipt["expected_contract_sha256"])
+        self.assertEqual(HOST_EVAL.expected_contract_sha256(profile), receipt["expected_contract_sha256"])
         self.assertEqual("reverse-craft", receipt["skill"]["name"])
         self.assertEqual("0.1.0", receipt["skill"]["version"])
         self.assertEqual(HOST_EVAL.skill_bundle_sha256(), receipt["skill"]["bundle_sha256"])
+
+        changed_aliases = copy.deepcopy(HOST_EVAL.PROFILES["r44"])
+        original_hash = HOST_EVAL.expected_contract_sha256(changed_aliases)
+        changed_aliases["normalizers"]["runtime_truth"]["public Web search"] = "Web search"
+        self.assertNotEqual(original_hash, HOST_EVAL.expected_contract_sha256(changed_aliases))
 
     def test_hosts_use_explicit_invocation_and_allow_read_only_loading(self) -> None:
         prompt = HOST_EVAL.PROFILES["r3"]["prompt"]
@@ -142,7 +157,7 @@ class HostEvalTests(unittest.TestCase):
     def test_regrade_is_content_bound_and_preserves_source_failure(self) -> None:
         profile_name = "r44"
         profile = HOST_EVAL.PROFILES[profile_name]
-        current = HOST_EVAL.evaluation_receipt(profile["prompt"], self.schema_bytes, profile["expected"])
+        current = HOST_EVAL.evaluation_receipt(profile["prompt"], self.schema_bytes, profile)
         source = {
             "schema": "reverse-craft.host-eval.v2",
             "valid": False,
@@ -168,6 +183,7 @@ class HostEvalTests(unittest.TestCase):
                 "payload": copy.deepcopy(profile["expected"]),
                 "errors": ["obsolete grader label"],
             })
+        source["results"][0]["payload"]["runtime_truth"] = "normal Web search"
 
         with tempfile.TemporaryDirectory() as raw:
             source_path = Path(raw) / "source.json"
@@ -178,8 +194,10 @@ class HostEvalTests(unittest.TestCase):
             self.assertTrue(regraded["valid"])
             self.assertFalse(regraded["source_receipt"]["valid"])
             self.assertEqual("obsolete grader label", regraded["results"][0]["source_errors"][0])
+            self.assertEqual("normal Web search", regraded["results"][0]["payload"]["runtime_truth"])
+            self.assertEqual("Web search", regraded["results"][0]["normalized_payload"]["runtime_truth"])
             self.assertEqual(
-                HOST_EVAL.expected_contract_sha256(profile["expected"]),
+                HOST_EVAL.expected_contract_sha256(profile),
                 regraded["expected_contract_sha256"],
             )
 

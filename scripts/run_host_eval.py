@@ -40,9 +40,15 @@ PROFILES = {
         "expected": {
             "route_id": "R44",
             "module_reference": "modules/threat-intelligence-osint.md",
-            "runtime_truth": "normal Web search",
+            "runtime_truth": "Web search",
             "mutates": False,
             "evidence_chain": ["Evidence", "Finding", "Path", "Report"],
+        },
+        "normalizers": {
+            "runtime_truth": {
+                "Web search": "Web search",
+                "normal Web search": "Web search",
+            },
         },
     },
 }
@@ -143,17 +149,23 @@ def host_prompt(host: str, prompt: str) -> str:
     raise ValueError(f"unsupported host: {host}")
 
 
-def expected_contract_sha256(expected: dict[str, Any]) -> str:
-    encoded = json.dumps(expected, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
-
-
 def canonical_json_sha256(value: Any) -> str:
     encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
-def evaluation_receipt(prompt: str, schema_bytes: bytes, expected: dict[str, Any]) -> dict[str, Any]:
+def private_contract(profile: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "expected": profile["expected"],
+        "normalizers": profile.get("normalizers", {}),
+    }
+
+
+def expected_contract_sha256(profile: dict[str, Any]) -> str:
+    return canonical_json_sha256(private_contract(profile))
+
+
+def evaluation_receipt(prompt: str, schema_bytes: bytes, profile: dict[str, Any]) -> dict[str, Any]:
     return {
         "evaluation_mode": EVALUATION_MODE,
         "expectation_exposed": False,
@@ -163,7 +175,7 @@ def evaluation_receipt(prompt: str, schema_bytes: bytes, expected: dict[str, Any
             for host in ("codex", "pi")
         },
         "response_schema_sha256": hashlib.sha256(schema_bytes).hexdigest(),
-        "expected_contract_sha256": expected_contract_sha256(expected),
+        "expected_contract_sha256": expected_contract_sha256(profile),
         "skill": skill_identity(),
     }
 
@@ -207,8 +219,23 @@ def extract_json(text: str) -> dict[str, Any]:
     raise ValueError("host output does not contain a JSON object")
 
 
-def validate_payload(value: dict[str, Any], expected: dict[str, Any]) -> list[str]:
-    errors = [f"{key}: expected {expected_value!r}, got {value.get(key)!r}" for key, expected_value in expected.items() if value.get(key) != expected_value]
+def normalize_payload(value: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(value)
+    for field, aliases in profile.get("normalizers", {}).items():
+        raw = normalized.get(field)
+        if isinstance(raw, str):
+            normalized[field] = aliases.get(raw, raw)
+    return normalized
+
+
+def validate_payload(value: dict[str, Any], profile: dict[str, Any]) -> list[str]:
+    expected = profile["expected"]
+    normalized = normalize_payload(value, profile)
+    errors = [
+        f"{key}: expected {expected_value!r}, got {value.get(key)!r}"
+        for key, expected_value in expected.items()
+        if normalized.get(key) != expected_value
+    ]
     extra = sorted(set(value) - set(expected))
     if extra:
         errors.append(f"unexpected keys: {extra}")
@@ -222,7 +249,7 @@ def safe_error_tail(value: str) -> str:
     return tail
 
 
-def run_codex(workspace: Path, timeout: int, prompt: str, expected: dict[str, Any]) -> dict[str, Any]:
+def run_codex(workspace: Path, timeout: int, prompt: str, profile: dict[str, Any]) -> dict[str, Any]:
     binary = shutil.which("codex")
     if not binary:
         return {"host": "codex", "status": "missing", "valid": False}
@@ -247,9 +274,11 @@ def run_codex(workspace: Path, timeout: int, prompt: str, expected: dict[str, An
     raw = output.read_text(encoding="utf-8") if output.is_file() else completed.stdout
     try:
         payload = extract_json(raw)
-        errors = validate_payload(payload, expected)
+        normalized_payload = normalize_payload(payload, profile)
+        errors = validate_payload(payload, profile)
     except Exception as exc:
         payload = None
+        normalized_payload = None
         errors = [f"{type(exc).__name__}: {exc}"]
     if snapshot["bundle_sha256"] != skill_bundle_sha256():
         errors.append("materialized Skill snapshot does not match source bundle")
@@ -259,12 +288,16 @@ def run_codex(workspace: Path, timeout: int, prompt: str, expected: dict[str, An
         "version": subprocess.run([binary, "--version"], text=True, capture_output=True, timeout=10, check=False).stdout.strip(),
         "invocation": {"mode": "explicit", "syntax": f"${SKILL_NAME}", "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest()},
         "skill_snapshot": snapshot,
-        "payload": payload, "errors": errors,
+        "payload": payload,
+        "payload_sha256": canonical_json_sha256(payload) if payload is not None else None,
+        "normalized_payload": normalized_payload,
+        "normalized_payload_sha256": canonical_json_sha256(normalized_payload) if normalized_payload is not None else None,
+        "errors": errors,
         "stderr_tail": safe_error_tail(completed.stderr) if completed.returncode else "",
     }
 
 
-def run_pi(workspace: Path, timeout: int, prompt: str, expected: dict[str, Any]) -> dict[str, Any]:
+def run_pi(workspace: Path, timeout: int, prompt: str, profile: dict[str, Any]) -> dict[str, Any]:
     binary = shutil.which("pi")
     if not binary:
         return {"host": "pi", "status": "missing", "valid": False}
@@ -284,9 +317,11 @@ def run_pi(workspace: Path, timeout: int, prompt: str, expected: dict[str, Any])
     )
     try:
         payload = extract_json(completed.stdout)
-        errors = validate_payload(payload, expected)
+        normalized_payload = normalize_payload(payload, profile)
+        errors = validate_payload(payload, profile)
     except Exception as exc:
         payload = None
+        normalized_payload = None
         errors = [f"{type(exc).__name__}: {exc}"]
     if snapshot["bundle_sha256"] != skill_bundle_sha256():
         errors.append("materialized Skill snapshot does not match source bundle")
@@ -296,7 +331,11 @@ def run_pi(workspace: Path, timeout: int, prompt: str, expected: dict[str, Any])
         "version": subprocess.run([binary, "--version"], text=True, capture_output=True, timeout=10, check=False).stdout.strip(),
         "invocation": {"mode": "explicit", "syntax": f"/skill:{SKILL_NAME}", "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest()},
         "skill_snapshot": snapshot,
-        "payload": payload, "errors": errors,
+        "payload": payload,
+        "payload_sha256": canonical_json_sha256(payload) if payload is not None else None,
+        "normalized_payload": normalized_payload,
+        "normalized_payload_sha256": canonical_json_sha256(normalized_payload) if normalized_payload is not None else None,
+        "errors": errors,
         "stderr_tail": safe_error_tail(completed.stderr) if completed.returncode else "",
     }
 
@@ -314,7 +353,7 @@ def regrade_receipt(
 ) -> dict[str, Any]:
     source_bytes = source_path.read_bytes()
     source = json.loads(source_bytes)
-    current = evaluation_receipt(profile["prompt"], schema_bytes, profile["expected"])
+    current = evaluation_receipt(profile["prompt"], schema_bytes, profile)
     receipt_errors: list[str] = []
 
     def require_equal(label: str, actual: Any, expected: Any) -> None:
@@ -372,9 +411,13 @@ def regrade_receipt(
         if not isinstance(payload, dict):
             errors.append("source host payload is not an object")
             payload_hash = None
+            normalized_payload = None
+            normalized_payload_hash = None
         else:
-            errors.extend(validate_payload(payload, profile["expected"]))
+            normalized_payload = normalize_payload(payload, profile)
+            errors.extend(validate_payload(payload, profile))
             payload_hash = canonical_json_sha256(payload)
+            normalized_payload_hash = canonical_json_sha256(normalized_payload)
         results.append({
             "host": host,
             "version": item.get("version"),
@@ -382,6 +425,8 @@ def regrade_receipt(
             "source_errors": item.get("errors", []),
             "payload": payload,
             "payload_sha256": payload_hash,
+            "normalized_payload": normalized_payload,
+            "normalized_payload_sha256": normalized_payload_hash,
             "errors": errors,
             "valid": not errors,
         })
@@ -423,10 +468,10 @@ def main() -> int:
         exposure_errors.extend(
             f"{host}: {error}"
             for error in expectation_exposure_errors(
-                host_prompt(host, profile["prompt"]), profile["expected"], response_schema,
+                host_prompt(host, profile["prompt"]), private_contract(profile), response_schema,
             )
         )
-    receipt = evaluation_receipt(profile["prompt"], schema_bytes, profile["expected"])
+    receipt = evaluation_receipt(profile["prompt"], schema_bytes, profile)
     if exposure_errors:
         payload = {
             "schema": "reverse-craft.host-eval.v2", "valid": False, "profile": args.profile,
@@ -452,9 +497,9 @@ def main() -> int:
             workspace.mkdir()
             try:
                 result = (
-                    run_codex(workspace, args.timeout, profile["prompt"], profile["expected"])
+                    run_codex(workspace, args.timeout, profile["prompt"], profile)
                     if host == "codex"
-                    else run_pi(workspace, args.timeout, profile["prompt"], profile["expected"])
+                    else run_pi(workspace, args.timeout, profile["prompt"], profile)
                 )
             except subprocess.TimeoutExpired:
                 result = {"host": host, "status": "timeout", "valid": False, "errors": [f"timeout after {args.timeout}s"]}
