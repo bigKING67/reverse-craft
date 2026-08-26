@@ -23,11 +23,12 @@ process-local import path. This makes a copied Skill work without installing a P
 | Component | Responsibility |
 |---|---|
 | `routing.py` | reviewed 42-route config, regex scoring, artifact magic hints |
-| `case_store.py` | private runtime paths, atomic snapshots, portable writer lock, artifact fixity, anchored event chain, seal |
+| `case_store.py` | private runtime paths, atomic snapshot mutation, portable writer lock, event/report/seal orchestration |
+| `case_validation.py` | snapshot/event/seal contracts, artifact fixity, event-chain reconciliation, seal manifest validation |
 | `doctor.py` | read-only platform/tool/MCP/browser67 discovery with a secret-safe MCP projection |
 | `setup_ops.py` | read-only plan, plan hash, allowlisted explicit apply, durable journal/receipts |
 | `provenance.py` | local source-map integrity and optional remote-head drift audit |
-| `cli.py` | stable command surface and structured error contract |
+| `cli.py` | stable command surface, expected error contract, redacted unexpected-crash diagnostics |
 
 ## Runtime data boundary
 
@@ -50,6 +51,10 @@ cross-domain case graph.
 - Per-case exclusive locks serialize writers and recover only dead/sufficiently stale owners.
 - Evidence copies are rehashed after copying; external evidence is rehashed on every validation.
 - A seal hashes snapshots, event stream, stored artifacts, and reports; CLI post-seal mutations are rejected.
+- Event and seal schemas are checked against runtime field contracts; seal validation also rejects extra fields and
+  timestamp drift from the sealed case snapshot.
+- Expected CLI errors retain `error.v1`/exit `2`; unexpected exceptions emit `crash.v1`/exit `3` with only the
+  exception class, never its message, arguments, environment, or traceback.
 - Setup actions are argv arrays, never shell strings. The transaction journal is written before the first process.
 
 These controls provide local consistency and fixity checks. They do not make the run directory append-only at the

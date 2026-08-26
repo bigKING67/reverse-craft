@@ -7,11 +7,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from test_support import ROOT
 
-from reverse_craft.cli import _print
+from reverse_craft.cli import _print, main
 
 CLI = ROOT / "skills" / "reverse-craft" / "scripts" / "reverse_craft.py"
 
@@ -56,7 +58,34 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             completed = self.run_cli("case", "status", "--case", "../escape", "--home", raw)
         self.assertEqual(2, completed.returncode)
-        self.assertEqual("reverse-craft.error.v1", json.loads(completed.stderr)["schema"])
+        self.assertEqual(
+            {"schema": "reverse-craft.error.v1", "error": "invalid case id: '../escape'"},
+            json.loads(completed.stderr),
+        )
+
+    def test_unexpected_exception_returns_redacted_crash_diagnostic(self) -> None:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        secret = "token=must-not-escape /private/case/path"
+
+        with (
+            mock.patch("reverse_craft.cli.run", side_effect=RuntimeError(secret)),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
+            return_code = main(["route", "--hint", "offline fixture", "--json"])
+
+        self.assertEqual(3, return_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertEqual(
+            {
+                "schema": "reverse-craft.crash.v1",
+                "error": "unexpected internal error",
+                "exception_type": "RuntimeError",
+            },
+            json.loads(stderr.getvalue()),
+        )
+        self.assertNotIn(secret, stderr.getvalue())
 
 
 if __name__ == "__main__":

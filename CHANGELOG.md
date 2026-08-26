@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Split case mutation/orchestration from case validation and manifest logic without changing the public CLI or data contracts.
+- Added event-record and seal JSON Schemas with source/runtime field-drift checks and stricter seal reconciliation.
+- Added redacted `crash.v1` diagnostics for unexpected CLI exceptions without exposing exception messages or tracebacks.
 - Hardened `doctor` MCP discovery so raw transport arguments, environment/header values, URL secrets, unknown
   transport fields, and failing command stderr are never returned.
 - Made new case/setup runtime directories and generated artifacts owner-only on POSIX.

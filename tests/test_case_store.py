@@ -11,6 +11,8 @@ from unittest import mock
 
 from test_support import ROOT  # noqa: F401
 
+import reverse_craft.case_store as case_store_module
+import reverse_craft.case_validation as case_validation_module
 from reverse_craft.case_store import (
     add_evidence,
     add_finding,
@@ -61,6 +63,17 @@ class CaseStoreTests(unittest.TestCase):
         )["path"]
         return evidence["id"], finding["id"], path["id"]
 
+    def test_case_store_reexports_existing_contract_constants(self) -> None:
+        names = (
+            "SNAPSHOTS", "SEVERITIES", "FINDING_STATUSES", "CONFIDENCES", "PATH_STATUSES", "ROUTE_IDS",
+            "CASE_REQUIRED_FIELDS", "CASE_OPTIONAL_FIELDS", "CASE_ALLOWED_FIELDS", "COLLECTION_REQUIRED_FIELDS",
+            "EVIDENCE_REQUIRED_FIELDS", "FINDING_REQUIRED_FIELDS", "PATH_REQUIRED_FIELDS", "EVENT_REQUIRED_FIELDS",
+            "EVENT_TYPES", "EVENT_DATA_FIELDS", "SHA256_RE", "EVIDENCE_ID_RE", "FINDING_ID_RE", "PATH_ID_RE",
+        )
+        for name in names:
+            with self.subTest(name=name):
+                self.assertIs(getattr(case_store_module, name), getattr(case_validation_module, name))
+
     def test_full_lifecycle_and_seal(self) -> None:
         case_id = self.new_case()
         evidence_id, finding_id, path_id = self.add_graph(case_id)
@@ -75,6 +88,27 @@ class CaseStoreTests(unittest.TestCase):
         self.assertEqual((evidence_id, finding_id, path_id), ("E-0001", "F-0001", "P-0001"))
         with self.assertRaises(ReverseCraftError):
             add_evidence(case_id, str(self.artifact), "binary", home=str(self.home))
+
+    def test_seal_document_rejects_unexpected_fields_and_timestamp_drift(self) -> None:
+        case_id = self.new_case()
+        self.add_graph(case_id)
+        seal_case(case_id, str(self.home))
+        seal_path = case_dir(case_id, str(self.home)) / "seal.json"
+        original = json.loads(seal_path.read_text(encoding="utf-8"))
+
+        with self.subTest("unexpected field"):
+            mutated = {**original, "unexpected": True}
+            seal_path.write_text(json.dumps(mutated), encoding="utf-8")
+            result = validate_case(case_id, str(self.home))
+            self.assertFalse(result["valid"])
+            self.assertIn("seal document has unexpected fields: unexpected", result["errors"])
+
+        with self.subTest("timestamp drift"):
+            mutated = {**original, "sealed_at": "2000-01-01T00:00:00Z"}
+            seal_path.write_text(json.dumps(mutated), encoding="utf-8")
+            result = validate_case(case_id, str(self.home))
+            self.assertFalse(result["valid"])
+            self.assertIn("seal timestamp does not match the case snapshot", result["errors"])
 
     def test_tampered_artifact_is_detected(self) -> None:
         case_id = self.new_case()

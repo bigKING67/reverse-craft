@@ -14,13 +14,18 @@ LIB = SKILL / "lib"
 sys.path.insert(0, str(LIB))
 
 from reverse_craft import __version__  # noqa: E402
-from reverse_craft.case_store import (  # noqa: E402
+from reverse_craft.case_validation import (  # noqa: E402
     CASE_ALLOWED_FIELDS,
     CASE_REQUIRED_FIELDS,
     COLLECTION_REQUIRED_FIELDS,
     EVIDENCE_REQUIRED_FIELDS,
+    EVENT_DATA_FIELDS,
+    EVENT_REQUIRED_FIELDS,
+    EVENT_TYPES,
     FINDING_REQUIRED_FIELDS,
+    MANIFEST_FILE_REQUIRED_FIELDS,
     PATH_REQUIRED_FIELDS,
+    SEAL_REQUIRED_FIELDS,
 )
 from reverse_craft.provenance import audit_references  # noqa: E402
 
@@ -29,12 +34,15 @@ REQUIRED = (
     "README.md", "THIRD_PARTY_NOTICES.md", "VERSION", "package.json", "pyproject.toml",
     "skills/reverse-craft/SKILL.md", "skills/reverse-craft/VERSION",
     "skills/reverse-craft/agents/openai.yaml", "skills/reverse-craft/scripts/reverse_craft.py",
+    "skills/reverse-craft/lib/reverse_craft/case_validation.py",
     "skills/reverse-craft/references/modules.json", "skills/reverse-craft/references/provenance.json",
     "skills/reverse-craft/references/upstream/reverse-skill-routing.json",
     "scripts/run_route_bank.py", "scripts/run_scenario_bank.py", "scripts/run_host_eval.py",
     "scripts/check_browser67_mcp.py",
 )
-SCHEMAS = ("route", "case", "evidence", "finding", "path", "report")
+SCHEMAS = (
+    "route", "case", "evidence", "finding", "path", "report", "event", "seal",
+)
 FORBIDDEN_PARTS = {"__pycache__", ".pytest_cache", ".ruff_cache", ".venv", "node_modules", "test-results"}
 
 
@@ -76,6 +84,47 @@ def main() -> int:
                 set(item_schema.get("properties", {})) != item_fields
             ):
                 errors.append(f"{name} schema item fields drifted from the runtime validator")
+    event_schema = json.loads((SKILL / "schemas/event.schema.json").read_text(encoding="utf-8"))
+    if (
+        set(event_schema.get("required", [])) != EVENT_REQUIRED_FIELDS or
+        set(event_schema.get("properties", {})) != EVENT_REQUIRED_FIELDS or
+        set(event_schema.get("properties", {}).get("type", {}).get("enum", [])) != EVENT_TYPES
+    ):
+        errors.append("event schema fields or types drifted from the runtime validator")
+    all_of = event_schema.get("allOf", [])
+    branches = (
+        all_of[0].get("oneOf", [])
+        if len(all_of) == 1 and isinstance(all_of[0], dict)
+        else []
+    )
+    definitions = event_schema.get("$defs", {})
+    event_data_contracts: dict[str, tuple[set[str], set[str]]] = {}
+    for branch in branches:
+        properties = branch.get("properties", {}) if isinstance(branch, dict) else {}
+        event_type = properties.get("type", {}).get("const")
+        reference = properties.get("data", {}).get("$ref", "")
+        definition = definitions.get(reference.removeprefix("#/$defs/"), {})
+        if isinstance(event_type, str) and isinstance(definition, dict):
+            event_data_contracts[event_type] = (
+                set(definition.get("required", [])), set(definition.get("properties", {})),
+            )
+    expected_event_data = {
+        name: (fields, fields) for name, fields in EVENT_DATA_FIELDS.items()
+    }
+    if event_data_contracts != expected_event_data:
+        errors.append("event data schemas drifted from the runtime validator")
+    seal_schema = json.loads(
+        (SKILL / "schemas/seal.schema.json").read_text(encoding="utf-8")
+    )
+    seal_properties = seal_schema.get("properties", {})
+    seal_file_schema = seal_properties.get("files", {}).get("items", {})
+    if (
+        set(seal_schema.get("required", [])) != SEAL_REQUIRED_FIELDS or
+        set(seal_properties) != SEAL_REQUIRED_FIELDS or
+        set(seal_file_schema.get("required", [])) != MANIFEST_FILE_REQUIRED_FIELDS or
+        set(seal_file_schema.get("properties", {})) != MANIFEST_FILE_REQUIRED_FIELDS
+    ):
+        errors.append("seal schema fields drifted from the runtime validator")
     skills = sorted(path for path in files if path.name == "SKILL.md")
     if skills != [SKILL / "SKILL.md"]:
         errors.append(f"expected exactly one SKILL.md, found: {[str(path.relative_to(ROOT)) for path in skills]}")

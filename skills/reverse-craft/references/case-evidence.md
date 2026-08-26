@@ -18,6 +18,8 @@ JSON snapshots are written atomically. `events.ndjson` is append-only through th
 its previous event hash. New cases also persist `event_count` and `last_event_hash` in `case.json`; validation
 compares that tail anchor and reconciles evidence/finding/path events with their snapshots. This detects
 ordinary tail truncation, reordering, record corruption, and partial writes. A per-case lock serializes writers.
+`schemas/event.schema.json` applies to each NDJSON record, while `schemas/seal.schema.json` describes the final
+seal receipt; source validation keeps their field sets aligned with the dependency-free runtime validator.
 
 Cases created before the tail anchor was introduced remain readable. Validation reports a legacy warning and
 the next successful mutation upgrades the case. An open case is still a local self-consistency record, not an

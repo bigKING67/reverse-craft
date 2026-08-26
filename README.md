@@ -60,6 +60,10 @@ $RC case seal --case <case-id>
 
 `REVERSE_CRAFT_HOME` 可覆盖默认运行根目录 `~/.reverse-craft`。案例数据不会默认写入源码树。
 
+CLI 校验失败返回退出码 `1`；可预期的用户/数据错误以 `reverse-craft.error.v1` 写入 stderr 并返回
+退出码 `2`；未预期异常只输出脱敏的 `reverse-craft.crash.v1`（异常类型，不含原始消息或 traceback）
+并返回退出码 `3`。
+
 ## 工具安装计划
 
 ```bash

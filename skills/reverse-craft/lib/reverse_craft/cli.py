@@ -181,9 +181,9 @@ def run(args: argparse.Namespace) -> Any:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
     try:
+        parser = build_parser()
+        args = parser.parse_args(argv)
         result = run(args)
         _print(result)
         if isinstance(result, dict) and result.get("valid") is False:
@@ -192,6 +192,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ReverseCraftError as exc:
         _print({"schema": "reverse-craft.error.v1", "error": str(exc)}, stream=sys.stderr)
         return 2
+    except Exception as exc:
+        _print(
+            {
+                "schema": "reverse-craft.crash.v1",
+                "error": "unexpected internal error",
+                "exception_type": type(exc).__name__,
+            },
+            stream=sys.stderr,
+        )
+        return 3
 
 
 if __name__ == "__main__":
