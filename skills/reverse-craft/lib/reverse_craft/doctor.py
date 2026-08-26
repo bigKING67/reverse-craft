@@ -7,9 +7,10 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from . import __version__
-from .common import bounded_text, home_root, utc_now
+from .common import bounded_text, home_root, redact_sensitive_text, utc_now
 
 TOOLS: dict[str, tuple[str, ...]] = {
     "core": ("git", "file", "strings", "jq", "openssl"),
@@ -28,6 +29,48 @@ VERSION_ARGS = {
     "adb": ("version",), "jadx": ("--version",), "apktool": ("--version",), "frida": ("--version",),
     "yara": ("--version",), "tshark": ("--version",), "binwalk": ("--help",),
 }
+
+
+def _redact_text(value: str, limit: int = 500) -> str:
+    return redact_sensitive_text(value, limit)
+
+
+def _safe_url_origin(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            return None
+        port = f":{parsed.port}" if parsed.port is not None else ""
+        return f"{parsed.scheme}://{parsed.hostname}{port}"
+    except ValueError:
+        return None
+
+
+def _transport_summary(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    summary: dict[str, Any] = {}
+    if isinstance(value.get("type"), str):
+        summary["type"] = _redact_text(value["type"], 80)
+    if isinstance(value.get("command"), str):
+        summary["command"] = _redact_text(value["command"], 500)
+    if isinstance(value.get("cwd"), str):
+        summary["cwd"] = _redact_text(value["cwd"], 500)
+    args = value.get("args")
+    if isinstance(args, list):
+        summary["args_count"] = len(args)
+    env = value.get("env")
+    if isinstance(env, dict):
+        summary["env_keys"] = sorted(str(key) for key in env)
+    headers = value.get("headers")
+    if isinstance(headers, dict):
+        summary["header_keys"] = sorted(str(key) for key in headers)
+    origin = _safe_url_origin(value.get("url"))
+    if origin is not None:
+        summary["url_origin"] = origin
+    return summary
 
 
 def _command_info(name: str, deep: bool) -> dict[str, Any]:
@@ -59,17 +102,33 @@ def _mcp_inventory() -> dict[str, Any]:
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {"checked": False, "reason": type(exc).__name__, "servers": []}
     if completed.returncode != 0:
-        return {"checked": False, "reason": bounded_text(completed.stderr.strip(), 500), "servers": []}
+        return {
+            "checked": False,
+            "reason": "codex_mcp_list_failed",
+            "exit_code": completed.returncode,
+            "servers": [],
+        }
     try:
         payload = json.loads(completed.stdout)
     except json.JSONDecodeError:
         return {"checked": False, "reason": "invalid_codex_json", "servers": []}
-    entries = payload if isinstance(payload, list) else payload.get("servers", [])
+    entries = payload if isinstance(payload, list) else payload.get("servers", []) if isinstance(payload, dict) else []
+    if not isinstance(entries, list):
+        return {"checked": False, "reason": "invalid_codex_json", "servers": []}
     servers: list[dict[str, Any]] = []
     for entry in entries:
+        if not isinstance(entry, dict):
+            continue
         name = entry.get("name") or entry.get("server_name") or entry.get("id")
+        if not isinstance(name, str):
+            continue
         if name in {"js-reverse", "tmwd_browser"}:
-            servers.append({"name": name, "enabled": entry.get("enabled", True), "transport": entry.get("transport")})
+            enabled = entry.get("enabled", True)
+            servers.append({
+                "name": name,
+                "enabled": enabled if isinstance(enabled, bool) else False,
+                "transport": _transport_summary(entry.get("transport")),
+            })
     return {"checked": True, "reason": None, "servers": servers}
 
 

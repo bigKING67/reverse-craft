@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import platform
-import re
 import shutil
 import subprocess
 import uuid
@@ -17,9 +16,11 @@ from .common import (
     atomic_write_json,
     bounded_text,
     canonical_json,
+    ensure_private_directory,
     home_root,
     load_json,
     parse_utc,
+    redact_sensitive_text,
     sha256_bytes,
     utc_now,
 )
@@ -110,13 +111,7 @@ def _plan_digest(plan: dict[str, Any]) -> str:
 
 
 def _redact_output(value: str) -> str:
-    value = re.sub(
-        r"(?i)\b(token|password|secret|api[_-]?key)(\s*[=:]\s*)\S+",
-        r"\1\2[REDACTED]",
-        value,
-    )
-    value = re.sub(r"(?i)(authorization:\s*bearer\s+)\S+", r"\1[REDACTED]", value)
-    return bounded_text(value)
+    return redact_sensitive_text(value)
 
 
 def create_plan(profile: str, output: str, home: str | None = None) -> dict[str, Any]:
@@ -217,8 +212,10 @@ def apply_plan(plan_path: str, expected_sha256: str, yes: bool, home: str | None
         if action.get("manager") != manager:
             raise ReverseCraftError(f"setup action manager mismatch: {action.get('id')}")
         _validate_action(action, manager)
-    transaction_dir = configured_home / "setup" / "transactions"
-    transaction_dir.mkdir(parents=True, exist_ok=True)
+    setup_dir = configured_home / "setup"
+    transaction_dir = setup_dir / "transactions"
+    ensure_private_directory(setup_dir)
+    ensure_private_directory(transaction_dir)
     journal_path = transaction_dir / f"{plan['id']}.json"
     journal: dict[str, Any] = {
         "schema": "reverse-craft.setup-transaction.v1",

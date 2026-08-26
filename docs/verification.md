@@ -3,7 +3,8 @@
 Reverse Craft keeps evidence tiers separate:
 
 1. **Source validation**: structure, versions, JSON parseability, route/module completeness, provenance hashes, Python compile.
-2. **Unit behavior**: path safety, artifact fixity, event chain, evidence references, concurrency, seal, setup tamper rejection.
+2. **Unit behavior**: path safety, private file modes, artifact fixity, event-chain tail anchors, snapshot/event
+   reconciliation, malformed-data fail-closed behavior, MCP secret projection, concurrency, seal, setup tamper rejection.
 3. **Routing bank**: 252 manually curated English/Chinese prompts across all 42 routes, including priority/exclusion cases.
 4. **Offline scenarios**: 10 isolated end-to-end cases through route -> evidence -> finding -> path -> report -> seal.
 5. **Real hosts**: Codex and Pi load the real Skill and return an exact R3/browser67/evidence-contract decision.
@@ -27,4 +28,3 @@ python3 scripts/check_browser67_mcp.py
 
 The last two commands are intentionally outside `check:all`: they depend on authenticated/local runtimes and must be
 reported as live evidence with host versions and current pins.
-

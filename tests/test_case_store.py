@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 import tempfile
 import threading
 import unittest
@@ -95,12 +97,121 @@ class CaseStoreTests(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertIn("event hash mismatch at 1", result["errors"])
 
+    def test_truncated_event_tail_is_detected_before_further_mutation(self) -> None:
+        case_id = self.new_case()
+        self.add_graph(case_id)
+        directory = case_dir(case_id, str(self.home))
+        events_path = directory / "events.ndjson"
+        events = events_path.read_text(encoding="utf-8").splitlines()
+        events_path.write_text("\n".join(events[:-1]) + "\n", encoding="utf-8")
+
+        result = validate_case(case_id, str(self.home))
+
+        self.assertFalse(result["valid"])
+        self.assertIn("case event_count does not match the event stream", result["errors"])
+        self.assertIn("path.added events do not match the snapshot", result["errors"])
+        with self.assertRaisesRegex(ReverseCraftError, "event anchor"):
+            add_evidence(case_id, str(self.artifact), "binary", home=str(self.home))
+        snapshot = json.loads((directory / "evidence.json").read_text(encoding="utf-8"))
+        self.assertEqual(1, len(snapshot["items"]))
+
+    def test_malformed_snapshots_fail_closed_without_traceback(self) -> None:
+        case_id = self.new_case()
+        self.add_graph(case_id)
+        directory = case_dir(case_id, str(self.home))
+        findings_path = directory / "findings.json"
+        findings = json.loads(findings_path.read_text(encoding="utf-8"))
+        findings["items"][0]["evidence_ids"] = None
+        findings_path.write_text(json.dumps(findings), encoding="utf-8")
+
+        result = validate_case(case_id, str(self.home))
+
+        self.assertFalse(result["valid"])
+        self.assertIn("invalid finding evidence_ids: F-0001", result["errors"])
+
+    def test_non_object_event_fails_closed_without_traceback(self) -> None:
+        case_id = self.new_case()
+        directory = case_dir(case_id, str(self.home))
+        (directory / "events.ndjson").write_text("[]\n", encoding="utf-8")
+
+        result = validate_case(case_id, str(self.home))
+
+        self.assertFalse(result["valid"])
+        self.assertIn("event at line 1 is not an object", result["errors"])
+
+    def test_empty_case_document_fails_closed(self) -> None:
+        case_id = self.new_case()
+        directory = case_dir(case_id, str(self.home))
+        (directory / "case.json").write_text("{}\n", encoding="utf-8")
+
+        result = validate_case(case_id, str(self.home))
+
+        self.assertFalse(result["valid"])
+        self.assertTrue(any(error.startswith("case missing fields:") for error in result["errors"]))
+
+    def test_unhashable_malformed_values_fail_closed(self) -> None:
+        case_id = self.new_case()
+        self.add_graph(case_id)
+        directory = case_dir(case_id, str(self.home))
+        mutations = {
+            "case.json": lambda value: value.update({"route_id": []}),
+            "evidence.json": lambda value: value["items"][0].update({"acquisition": {}}),
+            "findings.json": lambda value: value["items"][0].update({"severity": {}}),
+            "paths.json": lambda value: value["items"][0].update({"status": {}}),
+        }
+        for name, mutate in mutations.items():
+            path = directory / name
+            value = json.loads(path.read_text(encoding="utf-8"))
+            mutate(value)
+            path.write_text(json.dumps(value), encoding="utf-8")
+        events_path = directory / "events.ndjson"
+        events = [json.loads(line) for line in events_path.read_text(encoding="utf-8").splitlines()]
+        events[0]["type"] = []
+        events_path.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
+
+        result = validate_case(case_id, str(self.home))
+
+        self.assertFalse(result["valid"])
+        self.assertIn("invalid case route id", result["errors"])
+        self.assertIn("invalid evidence acquisition: E-0001", result["errors"])
+        self.assertIn("invalid finding classification: F-0001", result["errors"])
+        self.assertIn("invalid path status: P-0001", result["errors"])
+        self.assertIn("invalid event type at 1", result["errors"])
+
+    def test_legacy_case_without_event_anchor_is_valid_and_upgrades_on_write(self) -> None:
+        case_id = self.new_case()
+        directory = case_dir(case_id, str(self.home))
+        case_path = directory / "case.json"
+        case = json.loads(case_path.read_text(encoding="utf-8"))
+        case.pop("event_count")
+        case.pop("last_event_hash")
+        case_path.write_text(json.dumps(case), encoding="utf-8")
+
+        before = validate_case(case_id, str(self.home))
+        self.assertTrue(before["valid"])
+        self.assertIn("legacy case has no event tail anchor", before["warnings"])
+
+        add_evidence(case_id, str(self.artifact), "binary", home=str(self.home))
+        upgraded = json.loads(case_path.read_text(encoding="utf-8"))
+        self.assertEqual(2, upgraded["event_count"])
+        self.assertRegex(upgraded["last_event_hash"], r"^[0-9a-f]{64}$")
+        self.assertTrue(validate_case(case_id, str(self.home))["valid"])
+
     def test_external_evidence_fixity(self) -> None:
         case_id = self.new_case()
         add_evidence(case_id, str(self.artifact), "binary", external=True, home=str(self.home))
         self.assertTrue(validate_case(case_id, str(self.home))["valid"])
         self.artifact.write_bytes(b"changed")
         self.assertFalse(validate_case(case_id, str(self.home))["valid"])
+
+    def test_report_output_cannot_overwrite_reserved_case_files(self) -> None:
+        case_id = self.new_case()
+        directory = case_dir(case_id, str(self.home))
+
+        with self.assertRaisesRegex(ReverseCraftError, "reports directory"):
+            render_report(case_id, output=str(directory / "events.ndjson"), home=str(self.home))
+
+        self.assertTrue(validate_case(case_id, str(self.home))["valid"])
 
     def test_finding_requires_known_evidence(self) -> None:
         case_id = self.new_case()
@@ -149,6 +260,27 @@ class CaseStoreTests(unittest.TestCase):
         snapshot = json.loads((case_dir(case_id, str(self.home)) / "evidence.json").read_text(encoding="utf-8"))
         self.assertEqual(6, len(snapshot["items"]))
         self.assertEqual(6, len({item["id"] for item in snapshot["items"]}))
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission modes are not portable to Windows")
+    def test_case_directories_and_generated_files_are_private(self) -> None:
+        case_id = self.new_case()
+        add_evidence(case_id, str(self.artifact), "binary", home=str(self.home))
+        report = render_report(case_id, home=str(self.home))
+        directory = case_dir(case_id, str(self.home))
+
+        for path in (directory.parent, directory, directory / "artifacts", directory / "reports"):
+            self.assertEqual(0o700, stat.S_IMODE(path.stat().st_mode), path)
+        generated_files = [
+            directory / "case.json",
+            directory / "evidence.json",
+            directory / "findings.json",
+            directory / "paths.json",
+            directory / "events.ndjson",
+            next((directory / "artifacts").iterdir()),
+            Path(report["path"]),
+        ]
+        for path in generated_files:
+            self.assertEqual(0o600, stat.S_IMODE(path.stat().st_mode), path)
 
     @mock.patch("reverse_craft.common.os.kill")
     def test_windows_pid_probe_never_uses_os_kill(self, kill: mock.Mock) -> None:

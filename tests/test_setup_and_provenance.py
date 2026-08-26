@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 import shutil
 import subprocess
 import sys
@@ -13,10 +15,16 @@ from test_support import ROOT  # noqa: F401
 
 from reverse_craft.common import ReverseCraftError
 from reverse_craft.provenance import audit_references
-from reverse_craft.setup_ops import _plan_digest, apply_plan, create_plan, setup_status
+from reverse_craft.setup_ops import _plan_digest, _redact_output, apply_plan, create_plan, setup_status
 
 
 class SetupAndProvenanceTests(unittest.TestCase):
+    def test_setup_output_redacts_prefixed_secret_names(self) -> None:
+        canary = "rc-secret-canary"
+        output = _redact_output(f"API_TOKEN={canary}\nAuthorization: Bearer {canary}")
+        self.assertNotIn(canary, output)
+        self.assertEqual(2, output.count("[REDACTED]"))
+
     def test_reference_audit(self) -> None:
         result = audit_references()
         self.assertTrue(result["valid"])
@@ -48,6 +56,10 @@ class SetupAndProvenanceTests(unittest.TestCase):
             result = apply_plan(str(plan_path), receipt["sha256"], True, str(home))
             self.assertEqual("complete", result["status"])
             self.assertEqual(1, len(setup_status(str(home))["transactions"]))
+            if os.name != "nt":
+                self.assertEqual(0o700, stat.S_IMODE((home / "setup").stat().st_mode))
+                self.assertEqual(0o700, stat.S_IMODE((home / "setup" / "transactions").stat().st_mode))
+                self.assertEqual(0o600, stat.S_IMODE(Path(result["journal"]).stat().st_mode))
             with self.assertRaises(ReverseCraftError):
                 apply_plan(str(plan_path), receipt["sha256"], True, str(home))
 

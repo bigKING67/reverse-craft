@@ -23,8 +23,8 @@ process-local import path. This makes a copied Skill work without installing a P
 | Component | Responsibility |
 |---|---|
 | `routing.py` | reviewed 42-route config, regex scoring, artifact magic hints |
-| `case_store.py` | atomic snapshots, portable writer lock, artifact fixity, event hash chain, seal |
-| `doctor.py` | read-only platform/tool/MCP/browser67 discovery |
+| `case_store.py` | private runtime paths, atomic snapshots, portable writer lock, artifact fixity, anchored event chain, seal |
+| `doctor.py` | read-only platform/tool/MCP/browser67 discovery with a secret-safe MCP projection |
 | `setup_ops.py` | read-only plan, plan hash, allowlisted explicit apply, durable journal/receipts |
 | `provenance.py` | local source-map integrity and optional remote-head drift audit |
 | `cli.py` | stable command surface and structured error contract |
@@ -43,10 +43,15 @@ cross-domain case graph.
 
 ## Trust and recovery
 
+- Runtime-owned case/setup directories are owner-only on POSIX; generated files and copied artifacts are `0600`.
 - Atomic JSON snapshot replacement prevents partial documents.
-- `events.ndjson` links every event to the previous hash.
+- `events.ndjson` links every event to the previous hash; `case.json` anchors the current count/hash and validation
+  reconciles entity events with snapshots.
 - Per-case exclusive locks serialize writers and recover only dead/sufficiently stale owners.
 - Evidence copies are rehashed after copying; external evidence is rehashed on every validation.
-- A seal hashes snapshots, event stream, stored artifacts, and reports; post-seal mutations are rejected.
+- A seal hashes snapshots, event stream, stored artifacts, and reports; CLI post-seal mutations are rejected.
 - Setup actions are argv arrays, never shell strings. The transaction journal is written before the first process.
 
+These controls provide local consistency and fixity checks. They do not make the run directory append-only at the
+filesystem level and do not authenticate an actor who can rewrite the entire case plus its unkeyed seal. Strong
+adversarial tamper evidence requires an independently protected digest/signature or external immutable storage.

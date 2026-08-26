@@ -14,6 +14,14 @@ LIB = SKILL / "lib"
 sys.path.insert(0, str(LIB))
 
 from reverse_craft import __version__  # noqa: E402
+from reverse_craft.case_store import (  # noqa: E402
+    CASE_ALLOWED_FIELDS,
+    CASE_REQUIRED_FIELDS,
+    COLLECTION_REQUIRED_FIELDS,
+    EVIDENCE_REQUIRED_FIELDS,
+    FINDING_REQUIRED_FIELDS,
+    PATH_REQUIRED_FIELDS,
+)
 from reverse_craft.provenance import audit_references  # noqa: E402
 
 REQUIRED = (
@@ -49,6 +57,25 @@ def main() -> int:
         path = f"skills/reverse-craft/schemas/{name}.schema.json"
         if path not in relative:
             errors.append(f"missing schema: {path}")
+    schema_contracts = {
+        "case": (CASE_REQUIRED_FIELDS, CASE_ALLOWED_FIELDS),
+        "evidence": (COLLECTION_REQUIRED_FIELDS, EVIDENCE_REQUIRED_FIELDS),
+        "finding": (COLLECTION_REQUIRED_FIELDS, FINDING_REQUIRED_FIELDS),
+        "path": (COLLECTION_REQUIRED_FIELDS, PATH_REQUIRED_FIELDS),
+    }
+    for name, (document_fields, item_fields) in schema_contracts.items():
+        schema = json.loads((SKILL / f"schemas/{name}.schema.json").read_text(encoding="utf-8"))
+        if set(schema.get("required", [])) != document_fields or set(schema.get("properties", {})) != (
+            CASE_ALLOWED_FIELDS if name == "case" else COLLECTION_REQUIRED_FIELDS
+        ):
+            errors.append(f"{name} schema document fields drifted from the runtime validator")
+        if name != "case":
+            item_schema = schema.get("properties", {}).get("items", {}).get("items", {})
+            if (
+                set(item_schema.get("required", [])) != item_fields or
+                set(item_schema.get("properties", {})) != item_fields
+            ):
+                errors.append(f"{name} schema item fields drifted from the runtime validator")
     skills = sorted(path for path in files if path.name == "SKILL.md")
     if skills != [SKILL / "SKILL.md"]:
         errors.append(f"expected exactly one SKILL.md, found: {[str(path.relative_to(ROOT)) for path in skills]}")

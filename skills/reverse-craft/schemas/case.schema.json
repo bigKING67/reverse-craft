@@ -13,8 +13,13 @@
     "state": {"enum": ["open", "sealed"]},
     "created_at": {"type": "string", "format": "date-time"},
     "updated_at": {"type": "string", "format": "date-time"},
-    "sealed_at": {"type": ["string", "null"], "format": "date-time"}
+    "sealed_at": {"type": ["string", "null"], "format": "date-time"},
+    "event_count": {"type": "integer", "minimum": 0},
+    "last_event_hash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+  },
+  "dependentRequired": {
+    "event_count": ["last_event_hash"],
+    "last_event_hash": ["event_count"]
   },
   "additionalProperties": false
 }
-

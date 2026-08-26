@@ -10,7 +10,7 @@ Reverse Craft 是面向逆向工程、CTF 和授权安全研究的证据优先 A
   硬件/无线、攻防研究、报告/证据治理。
 - **Evidence-first**：Evidence -> Finding -> Path -> Report；所有关键结论可回溯。
 - **原件保护**：证据默认复制到 case artifact store，记录 SHA-256、size、时间和来源。
-- **可恢复写入**：原子 JSON 写入、append-only 事件流、锁、seal receipt。
+- **可恢复写入**：原子 JSON 写入、带 snapshot 对账与尾锚的 hash-chain 事件流、锁、seal receipt。
 - **安全引导**：`doctor` 与 `setup plan` 只读；`setup apply` 需要固定计划哈希和显式确认。
 - **browser67 协作**：JS 逆向复用 browser67 的 `js-reverse` 运行时，不创建第二套
   browser/session truth。

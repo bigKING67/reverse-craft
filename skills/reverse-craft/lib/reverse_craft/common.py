@@ -14,6 +14,13 @@ from typing import Any
 
 SCHEMA_PREFIX = "reverse-craft"
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+SENSITIVE_ASSIGNMENT_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9])"
+    r"([A-Za-z0-9_.-]*(?:token|password|passwd|secret|api[_-]?key|authorization|cookie|credential|private[_-]?key)"
+    r"[A-Za-z0-9_.-]*)(\s*[=:]\s*)(?!\[REDACTED\])\S+"
+)
+PRIVATE_DIRECTORY_MODE = 0o700
+PRIVATE_FILE_MODE = 0o600
 
 
 class ReverseCraftError(RuntimeError):
@@ -81,6 +88,13 @@ def atomic_write_json(path: Path, value: Any) -> None:
     atomic_write_bytes(path, content)
 
 
+def ensure_private_directory(path: Path, *, parents: bool = True, exist_ok: bool = True) -> None:
+    """Create a runtime-owned directory and enforce owner-only access on POSIX."""
+    path.mkdir(mode=PRIVATE_DIRECTORY_MODE, parents=parents, exist_ok=exist_ok)
+    if os.name != "nt":
+        path.chmod(PRIVATE_DIRECTORY_MODE)
+
+
 def safe_component(value: str, *, field: str = "identifier") -> str:
     if not ID_RE.fullmatch(value):
         raise ReverseCraftError(f"invalid {field}: {value!r}")
@@ -101,6 +115,12 @@ def bounded_text(value: str, limit: int = 4000) -> str:
     if len(value) <= limit:
         return value
     return value[:limit] + f"\n...[truncated {len(value) - limit} chars]"
+
+
+def redact_sensitive_text(value: str, limit: int = 4000) -> str:
+    redacted = re.sub(r"(?i)(authorization:\s*)bearer\s+\S+", r"\1[REDACTED]", value)
+    redacted = SENSITIVE_ASSIGNMENT_RE.sub(r"\1\2[REDACTED]", redacted)
+    return bounded_text(redacted, limit)
 
 
 def pid_is_alive(pid: int) -> bool | None:

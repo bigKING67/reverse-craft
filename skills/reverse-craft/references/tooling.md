@@ -20,6 +20,10 @@ the current hypothesis. Do not install a suite just because a route mentions it.
 `doctor --deep` may invoke version commands with short timeouts. Without `--deep`, it performs only path,
 platform, configuration, and filesystem checks.
 
+MCP discovery never returns raw transport configuration. It exposes only a bounded safe projection: transport
+type, command/cwd, argument count, environment/header names, and URL origin. Argument values, environment/header
+values, URL credentials/query/path, unknown transport fields, and failing `codex mcp list` stderr are omitted.
+
 ## Setup transaction
 
 `setup plan` detects one supported package manager and emits only missing packages. The saved plan contains:
@@ -35,4 +39,3 @@ plan; do not edit a failed plan.
 
 The built-in catalog intentionally covers common CLI packages, not heavyweight GUI/licensed tools such as
 IDA Pro or Xcode. For those, return official/manual guidance rather than pretending installation succeeded.
-
