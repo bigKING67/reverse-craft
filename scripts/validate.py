@@ -25,6 +25,7 @@ from reverse_craft.case_validation import (  # noqa: E402
     FINDING_REQUIRED_FIELDS,
     MANIFEST_FILE_REQUIRED_FIELDS,
     PATH_REQUIRED_FIELDS,
+    ROUTE_IDS,
     SEAL_REQUIRED_FIELDS,
 )
 from reverse_craft.provenance import audit_references  # noqa: E402
@@ -32,7 +33,7 @@ from reverse_craft.provenance import audit_references  # noqa: E402
 REQUIRED = (
     ".codex/config.toml", ".github/workflows/ci.yml", ".gitignore", "AGENTS.md", "LICENSE",
     "README.md", "THIRD_PARTY_NOTICES.md", "VERSION", "package.json", "pyproject.toml",
-    "skills/reverse-craft/SKILL.md", "skills/reverse-craft/VERSION",
+    "skills/reverse-craft/.npmignore", "skills/reverse-craft/SKILL.md", "skills/reverse-craft/VERSION",
     "skills/reverse-craft/agents/openai.yaml", "skills/reverse-craft/scripts/reverse_craft.py",
     "skills/reverse-craft/lib/reverse_craft/case_validation.py",
     "skills/reverse-craft/references/modules.json", "skills/reverse-craft/references/provenance.json",
@@ -147,11 +148,14 @@ def main() -> int:
             errors.append(f"broken SKILL.md link: {link}")
     upstream = json.loads((SKILL / "references/upstream/reverse-skill-routing.json").read_text(encoding="utf-8"))
     modules = json.loads((SKILL / "references/modules.json").read_text(encoding="utf-8"))
-    expected_ids = {f"R{index}" for index in range(42)}
+    expected_ids = ROUTE_IDS
     if set(upstream.get("routes", {})) != expected_ids or set(upstream.get("priority", [])) != expected_ids:
-        errors.append("routing source must contain exactly R0..R41")
+        errors.append("routing source must contain exactly the registered route IDs")
     if set(modules.get("routes", {})) != expected_ids:
-        errors.append("module map must contain exactly R0..R41")
+        errors.append("module map must contain exactly the registered route IDs")
+    route_bank = json.loads((ROOT / "tests/fixtures/route_seeds.json").read_text(encoding="utf-8"))
+    if set(route_bank.get("routes", {})) != expected_ids:
+        errors.append("route bank must contain exactly the registered route IDs")
     for route_id, mapping in modules.get("routes", {}).items():
         reference = SKILL / "references" / mapping["reference"]
         if not reference.is_file():
@@ -190,7 +194,7 @@ def main() -> int:
         "routes": len(upstream["routes"]),
         "schemas": len(SCHEMAS),
         "scenarios": len(list((ROOT / "tests" / "scenarios").glob("*.json"))),
-        "route_cases": sum(len(items) for items in json.loads((ROOT / "tests/fixtures/route_seeds.json").read_text(encoding="utf-8"))["routes"].values()),
+        "route_cases": sum(len(items) for items in route_bank["routes"].values()),
         "errors": errors,
     }
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))

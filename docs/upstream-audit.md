@@ -10,3 +10,11 @@
 An upstream head change is `review_needed`, not an automatic sync request. A reference can improve while Reverse Craft
 correctly retains its current implementation.
 
+## Accepted R44 delta (2026-08-26)
+
+- Reviewed reverse-skill through `914f74ad7d42d18d983d5842f8156440d9068399`; repository and changed R44 paths are MIT.
+- Absorbed the R44 threat-intelligence/OSINT triggers from `98fcf243c95b734e2258d79e4be7da5f0660d01c`.
+- Added action-first bilingual IOC enrichment grammar and adapted priority so explicit R44 intent wins a tie with R9
+  malware terminology; the shipped routing file is therefore classified `adapted`, not `direct_copy`.
+- Reimplemented the professional workflow as `modules/threat-intelligence-osint.md`; Xquik bootstrap/runtime code was
+  not copied, and browser67 remains authoritative when existing logged-in browser state is required.

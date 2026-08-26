@@ -11,8 +11,8 @@ from test_support import ROOT, route
 class RoutingTests(unittest.TestCase):
     def test_all_curated_routes(self) -> None:
         bank = json.loads((ROOT / "tests" / "fixtures" / "route_seeds.json").read_text(encoding="utf-8"))
-        self.assertEqual(42, len(bank["routes"]))
-        self.assertGreaterEqual(sum(len(items) for items in bank["routes"].values()), 220)
+        self.assertEqual(43, len(bank["routes"]))
+        self.assertGreaterEqual(sum(len(items) for items in bank["routes"].values()), 258)
         for expected, hints in bank["routes"].items():
             for hint in hints:
                 with self.subTest(route=expected, hint=hint):
@@ -21,7 +21,7 @@ class RoutingTests(unittest.TestCase):
     def test_fallback(self) -> None:
         result = route("understand this opaque artifact")
         self.assertEqual("R0", result["primary"]["id"])
-        self.assertEqual(42, result["routing_source"]["routes"])
+        self.assertEqual(43, result["routing_source"]["routes"])
 
     def test_exclusion_rules(self) -> None:
         self.assertEqual("R14", route("LLM prompt jailbreak")["primary"]["id"])
@@ -29,6 +29,22 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual("R37", route("OAuth2 OIDC single sign-on")["primary"]["id"])
         self.assertEqual("R12", route("OAuth API authorization")["primary"]["id"])
         self.assertEqual("R17", route("CTF pwn ROP challenge")["primary"]["id"])
+
+    def test_cti_intent_wins_malware_tie_and_preserves_secondary(self) -> None:
+        result = route(
+            "Use public sources to enrich malware IOCs and correlate an actor campaign"
+        )
+        self.assertEqual("R44", result["primary"]["id"])
+        self.assertTrue(result["ambiguous"])
+        self.assertEqual(["R44", "R9"], result["tied"])
+        self.assertEqual("R9", result["secondary"][0]["id"])
+
+    def test_generic_social_media_research_does_not_route_to_cti(self) -> None:
+        self.assertEqual("R0", route("analyze Twitter engagement for brand marketing")["primary"]["id"])
+        self.assertEqual("R0", route("社交媒体品牌营销增长分析")["primary"]["id"])
+
+    def test_malware_artifact_analysis_remains_r9(self) -> None:
+        self.assertEqual("R9", route("extract configuration from this malware sample")["primary"]["id"])
 
     def test_artifact_magic_is_read_only_hint(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -48,4 +64,3 @@ class RoutingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

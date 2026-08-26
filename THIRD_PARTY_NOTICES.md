@@ -7,13 +7,14 @@ mechanisms from the projects below. The machine-readable source map is
 ## reverse-skill
 
 - Source: <https://github.com/zhaoxuya520/reverse-skill>
-- Reviewed commit: `a3bdfffcf2e6a611a1cbdcc9a312be44527ac043`
+- Reviewed commit: `914f74ad7d42d18d983d5842f8156440d9068399`
 - License: MIT
 - Copyright: Copyright (c) 2026 zhaoxuya520
-- Directly reused: `skills/config/routing.json`, stored as
-  `skills/reverse-craft/references/upstream/reverse-skill-routing.json`.
-- Adapted: the 42-route taxonomy, deterministic scoring, specialist playbook
-  organization, and bilingual routing regression concept.
+- Adapted from `skills/config/routing.json`, stored as
+  `skills/reverse-craft/references/upstream/reverse-skill-routing.json`; Reverse Craft adds action-first bilingual IOC
+  enrichment grammar and moves explicit R44 intent ahead of R9 malware analysis for mixed enrichment requests.
+- Adapted: the 43-route taxonomy, deterministic scoring, specialist playbook organization, and bilingual routing
+  regression concept. The local CTI/OSINT workflow is reimplemented for Reverse Craft's case/evidence contract.
 - Not included: GPL-3.0 CTF Sandbox Orchestrator sources, AGPL Pentest Swarm
   sources, automatic bootstrap behavior, and forced action prompts.
 
@@ -57,4 +58,3 @@ MIT license text for the reused portion:
 - Runtime dependency only: browser67 is the canonical implementation of the
   `js-reverse` Skill and MCP runtime. Reverse Craft includes integration
   guidance and detection but no copied runtime/session implementation.
-

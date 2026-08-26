@@ -44,7 +44,7 @@
 | R39 | Diagrams | `evidence-delivery-ctf.md` |
 | R40 | Case evidence review | `evidence-delivery-ctf.md` |
 | R41 | CTF sandbox orchestration | `evidence-delivery-ctf.md` |
+| R44 | Threat intelligence / OSINT | `threat-intelligence-osint.md` |
 
 The route tells you what to read first. Cross-domain work should cite a primary route and only the secondary
 modules necessary to unblock it.
-

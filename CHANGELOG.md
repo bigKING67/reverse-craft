@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added first-class R44 CTI/OSINT routing, a public-source intelligence module, bilingual routing coverage, and an
+  offline IOC-enrichment scenario; explicit CTI intent now takes priority over mixed malware terminology.
+- Excluded generated Python bytecode/cache directories from the npm candidate archive.
 - Split case mutation/orchestration from case validation and manifest logic without changing the public CLI or data contracts.
 - Added event-record and seal JSON Schemas with source/runtime field-drift checks and stricter seal reconciliation.
 - Added redacted `crash.v1` diagnostics for unexpected CLI exceptions without exposing exception messages or tracebacks.

@@ -1,6 +1,6 @@
 {
   "schema": "reverse-craft.provenance.v1",
-  "generated_at": "2026-08-21T00:00:00Z",
+  "generated_at": "2026-08-26T00:00:00Z",
   "sources": [
     {
       "id": "browser67",
@@ -14,7 +14,7 @@
     {
       "id": "reverse-skill",
       "url": "https://github.com/zhaoxuya520/reverse-skill",
-      "commit": "a3bdfffcf2e6a611a1cbdcc9a312be44527ac043",
+      "commit": "914f74ad7d42d18d983d5842f8156440d9068399",
       "license": "MIT with separately licensed subprojects excluded",
       "role": "selective_source"
     },
@@ -31,8 +31,9 @@
       "path": "skills/reverse-craft/references/upstream/reverse-skill-routing.json",
       "scope": "installed",
       "source": "reverse-skill:skills/config/routing.json",
-      "classification": "direct_copy",
-      "sha256": "63ce5db75f7bdf6662923028953a91ccb1fac44b17eaa3561d07fb3c78a6f861"
+      "classification": "adapted",
+      "adaptation": "R44 CTI/OSINT triggers absorbed; action-first IOC enrichment grammar added; explicit R44 intent is prioritized before R9 malware analysis",
+      "sha256": "f08e298d7d0ce37e1b245e0760eb36026e6e19a826f91a193ef6efd00ca73cf1"
     },
     {
       "path": "skills/reverse-craft/lib/reverse_craft/routing.py",

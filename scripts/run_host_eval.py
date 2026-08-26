@@ -14,12 +14,40 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills" / "reverse-craft"
 SCHEMA = ROOT / "tests" / "fixtures" / "host-response.schema.json"
-PROMPT = """Use $reverse-craft for this read-only planning question. An authorized sandbox task asks you to reverse a browser request signature. No artifact or live browser is available yet. Return exactly one JSON object with these exact values and no Markdown: {\"skill_name\":\"reverse-craft\",\"skill_version\":\"0.1.0\",\"route_id\":\"R3\",\"module_reference\":\"modules/web-api-identity.md\",\"runtime_truth\":\"browser67\",\"first_action\":\"check_browser_health\",\"mutates\":false,\"evidence_chain\":[\"Evidence\",\"Finding\",\"Path\",\"Report\"]}. Do not call tools or modify files."""
+PROFILES = {
+    "r3": {
+        "prompt": """Use $reverse-craft for this read-only planning question. An authorized sandbox task asks you to reverse a browser request signature. No artifact or live browser is available yet. Return exactly one JSON object with these exact values and no Markdown: {\"skill_name\":\"reverse-craft\",\"skill_version\":\"0.1.0\",\"route_id\":\"R3\",\"module_reference\":\"modules/web-api-identity.md\",\"runtime_truth\":\"browser67\",\"first_action\":\"check_browser_health\",\"mutates\":false,\"evidence_chain\":[\"Evidence\",\"Finding\",\"Path\",\"Report\"]}. Do not call tools or modify files.""",
+        "expected": {
+            "skill_name": "reverse-craft",
+            "skill_version": "0.1.0",
+            "route_id": "R3",
+            "module_reference": "modules/web-api-identity.md",
+            "runtime_truth": "browser67",
+            "first_action": "check_browser_health",
+            "mutates": False,
+            "evidence_chain": ["Evidence", "Finding", "Path", "Report"],
+        },
+    },
+    "r44": {
+        "prompt": """Use $reverse-craft for this read-only planning question. An authorized task asks you to enrich a malware IOC from public sources and prepare a CTI handoff. No source lookup is authorized or available yet. Return exactly one JSON object with these exact values and no Markdown: {\"skill_name\":\"reverse-craft\",\"skill_version\":\"0.1.0\",\"route_id\":\"R44\",\"module_reference\":\"modules/threat-intelligence-osint.md\",\"runtime_truth\":\"public_source_evidence\",\"first_action\":\"define_intelligence_question\",\"mutates\":false,\"evidence_chain\":[\"Evidence\",\"Finding\",\"Path\",\"Report\"]}. Do not call tools or modify files.""",
+        "expected": {
+            "skill_name": "reverse-craft",
+            "skill_version": "0.1.0",
+            "route_id": "R44",
+            "module_reference": "modules/threat-intelligence-osint.md",
+            "runtime_truth": "public_source_evidence",
+            "first_action": "define_intelligence_question",
+            "mutates": False,
+            "evidence_chain": ["Evidence", "Finding", "Path", "Report"],
+        },
+    },
+}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run real Codex and Pi Reverse Craft behavior evaluations")
     parser.add_argument("--host", choices=["all", "codex", "pi"], default="all")
+    parser.add_argument("--profile", choices=sorted(PROFILES), default="r3")
     parser.add_argument("--timeout", type=int, default=240)
     parser.add_argument("--allow-missing", action="store_true")
     parser.add_argument("--output")
@@ -47,17 +75,7 @@ def extract_json(text: str) -> dict[str, Any]:
     raise ValueError("host output does not contain a JSON object")
 
 
-def validate_payload(value: dict[str, Any]) -> list[str]:
-    expected = {
-        "skill_name": "reverse-craft",
-        "skill_version": "0.1.0",
-        "route_id": "R3",
-        "module_reference": "modules/web-api-identity.md",
-        "runtime_truth": "browser67",
-        "first_action": "check_browser_health",
-        "mutates": False,
-        "evidence_chain": ["Evidence", "Finding", "Path", "Report"],
-    }
+def validate_payload(value: dict[str, Any], expected: dict[str, Any]) -> list[str]:
     errors = [f"{key}: expected {expected_value!r}, got {value.get(key)!r}" for key, expected_value in expected.items() if value.get(key) != expected_value]
     extra = sorted(set(value) - set(expected))
     if extra:
@@ -72,7 +90,7 @@ def safe_error_tail(value: str) -> str:
     return tail
 
 
-def run_codex(workspace: Path, timeout: int) -> dict[str, Any]:
+def run_codex(workspace: Path, timeout: int, prompt: str, expected: dict[str, Any]) -> dict[str, Any]:
     binary = shutil.which("codex")
     if not binary:
         return {"host": "codex", "status": "missing", "valid": False}
@@ -91,7 +109,7 @@ def run_codex(workspace: Path, timeout: int) -> dict[str, Any]:
             binary, "exec", "--ephemeral", "--ignore-rules", "--sandbox", "read-only",
             "--disable", "hooks", "--disable", "memories", "--disable", "plugins", "--disable", "apps",
             "--skip-git-repo-check", "-C", str(workspace), "--output-schema", str(SCHEMA),
-            "--output-last-message", str(output), PROMPT,
+            "--output-last-message", str(output), prompt,
         ],
         text=True, capture_output=True, timeout=timeout, check=False,
         env=codex_env,
@@ -99,7 +117,7 @@ def run_codex(workspace: Path, timeout: int) -> dict[str, Any]:
     raw = output.read_text(encoding="utf-8") if output.is_file() else completed.stdout
     try:
         payload = extract_json(raw)
-        errors = validate_payload(payload)
+        errors = validate_payload(payload, expected)
     except Exception as exc:
         payload = None
         errors = [f"{type(exc).__name__}: {exc}"]
@@ -112,7 +130,7 @@ def run_codex(workspace: Path, timeout: int) -> dict[str, Any]:
     }
 
 
-def run_pi(workspace: Path, timeout: int) -> dict[str, Any]:
+def run_pi(workspace: Path, timeout: int, prompt: str, expected: dict[str, Any]) -> dict[str, Any]:
     binary = shutil.which("pi")
     if not binary:
         return {"host": "pi", "status": "missing", "valid": False}
@@ -122,13 +140,13 @@ def run_pi(workspace: Path, timeout: int) -> dict[str, Any]:
     completed = subprocess.run(
         [
             binary, "--print", "--no-session", "--no-extensions", "--no-context-files", "--no-tools",
-            "--skill", str(SKILL), PROMPT,
+            "--skill", str(SKILL), prompt,
         ],
         cwd=workspace, text=True, capture_output=True, timeout=timeout, check=False, env=env,
     )
     try:
         payload = extract_json(completed.stdout)
-        errors = validate_payload(payload)
+        errors = validate_payload(payload, expected)
     except Exception as exc:
         payload = None
         errors = [f"{type(exc).__name__}: {exc}"]
@@ -143,6 +161,7 @@ def run_pi(workspace: Path, timeout: int) -> dict[str, Any]:
 
 def main() -> int:
     args = parse_args()
+    profile = PROFILES[args.profile]
     requested = ["codex", "pi"] if args.host == "all" else [args.host]
     results: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="reverse-craft-host-eval-") as raw:
@@ -151,14 +170,18 @@ def main() -> int:
             workspace = root / host
             workspace.mkdir()
             try:
-                result = run_codex(workspace, args.timeout) if host == "codex" else run_pi(workspace, args.timeout)
+                result = (
+                    run_codex(workspace, args.timeout, profile["prompt"], profile["expected"])
+                    if host == "codex"
+                    else run_pi(workspace, args.timeout, profile["prompt"], profile["expected"])
+                )
             except subprocess.TimeoutExpired:
                 result = {"host": host, "status": "timeout", "valid": False, "errors": [f"timeout after {args.timeout}s"]}
             results.append(result)
     missing = [item["host"] for item in results if item["status"] == "missing"]
     valid = all(item["valid"] or (args.allow_missing and item["status"] == "missing") for item in results)
     payload = {
-        "schema": "reverse-craft.host-eval.v1", "valid": valid, "requested": requested,
+        "schema": "reverse-craft.host-eval.v1", "valid": valid, "profile": args.profile, "requested": requested,
         "missing": missing, "results": results,
         "isolation": {"codex": "ephemeral, ignore rules, hooks/memories/plugins/apps disabled, read-only sandbox", "pi": "no session/extensions/context/tools; temporary session directory"},
     }

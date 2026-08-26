@@ -42,6 +42,7 @@
     "R38": ["SDR signal research", "HackRF protocol capture", "GNU Radio decoding", "射频协议分析", "软件无线电研究", "蓝牙 BLE 逆向"],
     "R39": ["Mermaid sequence diagram", "Graphviz attack graph", "PlantUML architecture", "生成流程图", "画攻击路径图", "制作数据流图"],
     "R40": ["case evidence chain review", "case audit traceability", "fixity check evidence graph", "案件证据链审查", "案例可追溯性审计", "evidence graph validation"],
-    "R41": ["CTF sandbox challenge", "AWD competition task", "solve a CTF crypto fixture", "靶场比赛题", "CTF Web 题", "AWD 靶场编排"]
+    "R41": ["CTF sandbox challenge", "AWD competition task", "solve a CTF crypto fixture", "靶场比赛题", "CTF Web 题", "AWD 靶场编排"],
+    "R44": ["Use public sources to enrich malware IOCs, correlate an actor campaign, and prepare a CTI handoff", "open-source intelligence for a threat actor campaign", "search X posts for phishing campaign indicators", "使用公开来源富化恶意软件 IOC，关联威胁组织活动并输出情报交接", "开源情报关联威胁组织活动", "检索推文中的诈骗 IOC 线索"]
   }
 }

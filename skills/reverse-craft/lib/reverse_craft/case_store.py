@@ -140,7 +140,7 @@ def init_case(title: str, scope: str, route_id: str | None = None, home: str | N
     if not title.strip() or not scope.strip():
         raise ReverseCraftError("title and scope must not be empty")
     if route_id is not None and (not isinstance(route_id, str) or route_id not in ROUTE_IDS):
-        raise ReverseCraftError("route id must be R0..R41")
+        raise ReverseCraftError("route id must be a registered route (R0..R41 or R44)")
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     case_id = f"{timestamp}-{slugify(title)}-{secrets.token_hex(2)}"
     directory = case_dir(case_id, home)

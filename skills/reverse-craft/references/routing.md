@@ -1,6 +1,6 @@
 # Deterministic routing
 
-The router uses the reviewed 42-route taxonomy in
+The router uses the reviewed 43-route taxonomy in
 `upstream/reverse-skill-routing.json` and the Reverse Craft family map in `modules.json`.
 
 ## Scoring
@@ -32,6 +32,7 @@ whole case. A report request (`R20`) should normally retain the analysis route a
 
 ## Source boundary
 
-The routing JSON is a direct MIT-licensed copy pinned by SHA-256 and commit in `provenance.json`.
-Reverse Craft owns its scoring implementation, module map, tests, and output contract.
-
+The routing JSON is an MIT-licensed adaptation pinned by SHA-256 and upstream commit in `provenance.json`.
+Reverse Craft adds action-first bilingual IOC enrichment grammar and prioritizes explicit R44 CTI/OSINT intent before
+R9 malware analysis so mixed enrichment requests retain the intelligence workflow; these local choices differ from the
+reviewed upstream snapshot. Reverse Craft owns its scoring implementation, module map, tests, and output contract.

@@ -62,7 +62,7 @@
       "required": ["id", "route_id"],
       "properties": {
         "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
-        "route_id": {"type": ["string", "null"], "pattern": "^R(?:[0-9]|[1-3][0-9]|4[01])$"}
+        "route_id": {"type": ["string", "null"], "pattern": "^(?:R(?:[0-9]|[1-3][0-9]|4[01])|R44)$"}
       },
       "additionalProperties": false
     },

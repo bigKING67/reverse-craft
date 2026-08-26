@@ -1,13 +1,13 @@
 # Reverse Craft
 
-Reverse Craft 是面向逆向工程、CTF 和授权安全研究的证据优先 Agent Skill。
-它把 42 条专业路线统一为一个可发现的 `$reverse-craft`，并提供确定性路由、
+Reverse Craft 是面向逆向工程、CTI/OSINT、CTF 和授权安全研究的证据优先 Agent Skill。
+它把 43 条专业路线统一为一个可发现的 `$reverse-craft`，并提供确定性路由、
 案例状态机、证据链、Finding/Path 追溯、可复现报告、安全工具引导和真实宿主验收。
 
 ## 核心能力
 
-- **一个入口，42 条路线**：二进制、移动端、Web/API、云与身份、取证与恶意样本、
-  硬件/无线、攻防研究、报告/证据治理。
+- **一个入口，43 条路线**：二进制、移动端、Web/API、云与身份、取证与恶意样本、
+  CTI/公开来源 OSINT、硬件/无线、攻防研究、报告/证据治理。
 - **Evidence-first**：Evidence -> Finding -> Path -> Report；所有关键结论可回溯。
 - **原件保护**：证据默认复制到 case artifact store，记录 SHA-256、size、时间和来源。
 - **可恢复写入**：原子 JSON 写入、带 snapshot 对账与尾锚的 hash-chain 事件流、锁、seal receipt。
@@ -48,6 +48,7 @@ RC="python3 skills/reverse-craft/scripts/reverse_craft.py"
 
 $RC doctor --json
 $RC route --hint "分析 APK 的证书校验和 native so" --json
+$RC route --hint "使用公开来源富化 IOC 并准备 CTI 交接" --json
 $RC case init --title "sample-01" --scope "local CTF fixture"
 $RC evidence add --case <case-id> --file ./sample.bin --kind binary
 $RC finding add --case <case-id> --title "Parser trusts length field" \
@@ -79,6 +80,7 @@ $RC setup apply --plan /tmp/reverse-craft-plan.json --sha256 <printed-sha256> --
 ```bash
 npm run check:all
 npm run test:hosts          # 真实 Codex + Pi，可用时运行
+npm run test:hosts:cti      # 真实 Codex + Pi 的 R44/CTI 发现与边界探针
 npm run check:browser67     # 真实 MCP initialize -> tools/list -> tools/call
 ```
 

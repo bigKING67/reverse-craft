@@ -11,14 +11,14 @@
     "primary": {"$ref": "#/$defs/candidate"},
     "secondary": {"type": "array", "items": {"$ref": "#/$defs/candidate"}},
     "ambiguous": {"type": "boolean"},
-    "tied": {"type": "array", "items": {"pattern": "^R(?:[0-9]|[1-3][0-9]|4[01])$"}},
+    "tied": {"type": "array", "items": {"pattern": "^(?:R(?:[0-9]|[1-3][0-9]|4[01])|R44)$"}},
     "candidate_count": {"type": "integer", "minimum": 1},
     "routing_source": {
       "type": "object",
       "required": ["schema_version", "routes", "sha256"],
       "properties": {
         "schema_version": {"type": "string"},
-        "routes": {"const": 42},
+        "routes": {"const": 43},
         "sha256": {"pattern": "^[0-9a-f]{64}$"}
       },
       "additionalProperties": false
@@ -29,7 +29,7 @@
       "type": "object",
       "required": ["id", "label", "score", "priority", "matched_rules"],
       "properties": {
-        "id": {"pattern": "^R(?:[0-9]|[1-3][0-9]|4[01])$"},
+        "id": {"pattern": "^(?:R(?:[0-9]|[1-3][0-9]|4[01])|R44)$"},
         "label": {"type": "string", "minLength": 1},
         "score": {"type": "integer", "minimum": 0},
         "priority": {"type": "integer", "minimum": 0},
@@ -43,4 +43,3 @@
   },
   "additionalProperties": false
 }
-

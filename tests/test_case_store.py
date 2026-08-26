@@ -74,6 +74,14 @@ class CaseStoreTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIs(getattr(case_store_module, name), getattr(case_validation_module, name))
 
+    def test_non_contiguous_r44_route_is_supported_but_unregistered_ids_fail(self) -> None:
+        case_id = init_case("CTI fixture", "offline public-source fixture", "R44", str(self.home))["case"]["id"]
+        self.assertEqual("R44", case_status(case_id, str(self.home))["case"]["route_id"])
+        self.assertTrue(validate_case(case_id, str(self.home))["valid"])
+        for route_id in ("R42", "R43", "R45"):
+            with self.subTest(route_id=route_id), self.assertRaisesRegex(ReverseCraftError, "registered route"):
+                init_case("Invalid route", "offline fixture", route_id, str(self.home))
+
     def test_full_lifecycle_and_seal(self) -> None:
         case_id = self.new_case()
         evidence_id, finding_id, path_id = self.add_graph(case_id)

@@ -2,14 +2,14 @@
 
 ## One public Skill
 
-`skills/reverse-craft/SKILL.md` is the only discovery surface. The router selects one of 42 route IDs, and `modules.json`
-maps it to one of eight progressive specialist references. Module documents are plain Markdown so Codex/Pi do not load
-42 independent Skill descriptions or resolve competing public triggers.
+`skills/reverse-craft/SKILL.md` is the only discovery surface. The router selects one of 43 route IDs, and `modules.json`
+maps it to one of nine progressive specialist references. Module documents are plain Markdown so Codex/Pi do not load
+43 independent Skill descriptions or resolve competing public triggers.
 
 ```text
 User task
   -> $reverse-craft
-  -> deterministic route (R0..R41)
+  -> deterministic route (R0..R41 plus R44)
   -> one specialist family reference
   -> shared case/evidence runtime
   -> report / rebuilt artifact / verified solution
@@ -22,7 +22,7 @@ process-local import path. This makes a copied Skill work without installing a P
 
 | Component | Responsibility |
 |---|---|
-| `routing.py` | reviewed 42-route config, regex scoring, artifact magic hints |
+| `routing.py` | reviewed 43-route config, regex scoring, artifact magic hints |
 | `case_store.py` | private runtime paths, atomic snapshot mutation, portable writer lock, event/report/seal orchestration |
 | `case_validation.py` | snapshot/event/seal contracts, artifact fixity, event-chain reconciliation, seal manifest validation |
 | `doctor.py` | read-only platform/tool/MCP/browser67 discovery with a secret-safe MCP projection |

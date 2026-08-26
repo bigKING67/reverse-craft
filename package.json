@@ -2,7 +2,7 @@
   "name": "@bigking67/reverse-craft",
   "version": "0.1.0",
   "private": true,
-  "description": "Evidence-first reverse engineering and security research Agent Skill",
+  "description": "Evidence-first reverse engineering and CTI/OSINT Agent Skill",
   "license": "MIT",
   "files": [
     "skills/reverse-craft",
@@ -17,6 +17,7 @@
     "test:routing": "python3 scripts/run_route_bank.py",
     "test:scenarios": "python3 scripts/run_scenario_bank.py",
     "test:hosts": "python3 scripts/run_host_eval.py",
+    "test:hosts:cti": "python3 scripts/run_host_eval.py --profile r44",
     "check:browser67": "python3 scripts/check_browser67_mcp.py",
     "check:all": "npm run validate && npm test && npm run test:routing && npm run test:scenarios"
   },

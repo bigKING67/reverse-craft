@@ -42,7 +42,7 @@
     "R38": {"slug": "radio-sdr", "family": "embedded-wireless-protocols", "reference": "modules/embedded-wireless-protocols.md"},
     "R39": {"slug": "diagram-generator", "family": "evidence-delivery-ctf", "reference": "modules/evidence-delivery-ctf.md"},
     "R40": {"slug": "case-review", "family": "evidence-delivery-ctf", "reference": "modules/evidence-delivery-ctf.md"},
-    "R41": {"slug": "ctf-sandbox", "family": "evidence-delivery-ctf", "reference": "modules/evidence-delivery-ctf.md"}
+    "R41": {"slug": "ctf-sandbox", "family": "evidence-delivery-ctf", "reference": "modules/evidence-delivery-ctf.md"},
+    "R44": {"slug": "threat-intelligence-osint", "family": "threat-intelligence-osint", "reference": "modules/threat-intelligence-osint.md"}
   }
 }
-

@@ -20,7 +20,7 @@ SEVERITIES = {"info", "low", "medium", "high", "critical"}
 FINDING_STATUSES = {"hypothesis", "supported", "confirmed", "refuted"}
 CONFIDENCES = {"low", "medium", "high"}
 PATH_STATUSES = {"hypothesis", "supported", "confirmed", "refuted"}
-ROUTE_IDS = {f"R{index}" for index in range(42)}
+ROUTE_IDS = {*(f"R{index}" for index in range(42)), "R44"}
 CASE_REQUIRED_FIELDS = {
     "schema", "id", "title", "scope", "route_id", "state", "created_at", "updated_at", "sealed_at",
 }

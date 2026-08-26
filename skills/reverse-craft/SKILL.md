@@ -1,13 +1,14 @@
 ---
 name: reverse-craft
-description: Evidence-first reverse engineering, CTF, malware/forensics, protocol, mobile, binary, browser, cloud, identity, hardware, and authorized security research. Use when the task requires analyzing an implementation or artifact, routing across security specialties, preserving a case evidence chain, or producing a reproducible reverse-engineering report.
+description: Evidence-first reverse engineering and authorized CTI/OSINT workbench for opaque artifacts, CTF, malware/forensics, public-source threat intelligence, protocol, mobile, binary, browser, cloud, identity, hardware, and security research. Use when a task requires reconstructing an implementation, enriching or correlating cyber-threat intelligence, routing across security specialties, preserving a case evidence chain, or producing a reproducible report.
 metadata:
-  short-description: Evidence-first reverse engineering workbench
+  short-description: Reverse engineering + CTI/OSINT workbench
 ---
 
 # Reverse Craft
 
-Turn an opaque target into a reproducible explanation, artifact, or solution.
+Turn an opaque target or public-source threat question into a reproducible explanation, artifact, intelligence handoff,
+or solution.
 Route to one internal specialist module while keeping one case/evidence contract.
 
 ## Non-negotiable boundaries
@@ -126,6 +127,7 @@ Read only the specialist family selected by the router:
 - `web-api-identity.md`: JS/API/browser automation/database/federation
 - `system-cloud-appsec.md`: attack chains/tools/supply chain/cloud/AD/code audit
 - `forensics-defense.md`: malware/forensics/hunting/email
+- `threat-intelligence-osint.md`: public-source IOC enrichment/campaign correlation/CTI handoff
 - `embedded-wireless-protocols.md`: firmware/protocol/OT/Wi-Fi/hardware/RF
 - `ai-security.md`: LLM/agent security
 - `evidence-delivery-ctf.md`: reports/diagrams/case review/CTF orchestration
