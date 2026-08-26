@@ -46,6 +46,14 @@ Route to one internal specialist module while keeping one case/evidence contract
 If no route wins, use `R0` general reverse engineering. If several domains are required, choose the
 decisive blocker as primary and name the others as secondary; do not load every module.
 
+## Optional delegated execution
+
+Keep small triage and one-command transforms inline. A host may delegate non-trivial, tool-heavy work to
+one bounded reverse specialist when disassembly, debugging, packet, instrumentation, or decode output
+would pollute the main decision context. The main agent retains scope, sensitive authorization, conflict
+resolution, and independent replay of the decisive result. Read
+[references/delegation.md](references/delegation.md) before creating or accepting delegated work.
+
 ## Operating modes
 
 - **Triage**: identify format, architecture, protections, entrypoints, likely route, and next evidence.
@@ -107,6 +115,7 @@ Read [references/browser67-js.md](references/browser67-js.md) before live browse
 - Case state and evidence contract: [references/case-evidence.md](references/case-evidence.md)
 - Tools and bootstrap profiles: [references/tooling.md](references/tooling.md)
 - Reporting and confidence language: [references/reporting.md](references/reporting.md)
+- Optional specialist delegation: [references/delegation.md](references/delegation.md)
 - Provenance and upstream boundaries: [references/provenance.md](references/provenance.md)
 - Specialist index: [references/modules/index.md](references/modules/index.md)
 
@@ -127,4 +136,3 @@ Report: outcome first; decisive evidence; exact reproduction/verification; chang
 remaining hypotheses, and actions not performed. Use `OBSERVED`, `INFERRED`, `HYPOTHESIZED`, or
 `UNVERIFIED` when evidence strength matters. Do not promote a static gate, mock, or hosted smoke into live
 target evidence.
-
