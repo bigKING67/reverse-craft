@@ -18,3 +18,11 @@ correctly retains its current implementation.
   malware terminology; the shipped routing file is therefore classified `adapted`, not `direct_copy`.
 - Reimplemented the professional workflow as `modules/threat-intelligence-osint.md`; Xquik bootstrap/runtime code was
   not copied, and browser67 remains authoritative when existing logged-in browser state is required.
+
+## Reviewed codex-keysmith documentation delta (2026-08-26)
+
+- Reviewed codex-keysmith from `6bae8cac5aa675d25ed11607669e7ef2ef97c6ac` through
+  `2cb7f382ea8a08e9af5a6d9c16580b45f639891a`; the repository remains MIT licensed.
+- The only changed paths are `README.md` and `README.en.md`, which add the project's official GitHub Discussions link.
+- No dry-run, ownership, transaction, receipt, prompt-bank, or scenario-bank mechanism changed, so Reverse Craft
+  retains its existing reimplementations and absorbs no code from this delta.

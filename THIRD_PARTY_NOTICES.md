@@ -41,7 +41,7 @@ MIT license text for the reused portion:
 ## codex-keysmith
 
 - Source: <https://github.com/Jia-Ethan/codex-keysmith>
-- Reviewed commit: `6bae8cac5aa675d25ed11607669e7ef2ef97c6ac`
+- Reviewed commit: `2cb7f382ea8a08e9af5a6d9c16580b45f639891a`
 - License: MIT
 - Copyright: Copyright (c) 2026 Jia-Ethan
 - Reimplemented, not copied: dry-run-first setup, ownership manifests, atomic

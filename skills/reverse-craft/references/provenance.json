@@ -1,6 +1,6 @@
 {
   "schema": "reverse-craft.provenance.v1",
-  "generated_at": "2026-08-26T00:00:00Z",
+  "generated_at": "2026-08-26T13:05:18Z",
   "sources": [
     {
       "id": "browser67",
@@ -21,7 +21,7 @@
     {
       "id": "codex-keysmith",
       "url": "https://github.com/Jia-Ethan/codex-keysmith",
-      "commit": "6bae8cac5aa675d25ed11607669e7ef2ef97c6ac",
+      "commit": "2cb7f382ea8a08e9af5a6d9c16580b45f639891a",
       "license": "MIT",
       "role": "mechanism_reference"
     }
