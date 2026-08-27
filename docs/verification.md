@@ -10,7 +10,9 @@ Reverse Craft keeps evidence tiers separate:
 3. **Routing bank**: manually curated English/Chinese prompts across all 43 routes, including priority/exclusion cases.
    The runner receipt is authoritative for the exact current case count; contract tests enforce the maintained minimum
    coverage floor separately.
-4. **Offline scenarios**: 11 isolated end-to-end cases through route -> evidence -> finding -> path -> report -> seal.
+4. **Offline scenarios**: curated isolated end-to-end cases through route -> evidence -> finding -> path -> report -> seal.
+   The runner receipt is authoritative for the exact current scenario count; the runner enforces the maintained minimum
+   coverage floor separately.
 5. **Real hosts**: Codex and Pi explicitly invoke an isolated copy of the real Skill for realistic planning requests.
    Their prompts and output schema omit the expected semantic values; the runner validates responses against a private
    R3/browser67 or R44/CTI contract and binds the receipt to the prompt, schema, Skill entrypoint, version, and full
