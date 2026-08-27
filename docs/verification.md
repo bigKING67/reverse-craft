@@ -16,9 +16,10 @@ Reverse Craft keeps evidence tiers separate:
 5. **Real hosts**: Codex and Pi explicitly invoke an isolated copy of the real Skill for realistic planning requests.
    Their prompts and output schema omit the expected semantic values; the runner validates responses against a private
    R3/browser67, R44/CTI, or R0 bounded-replanning contract and binds the receipt to the prompt, profile-specific schema,
-   Skill entrypoint, version, and full source-bundle hash. Exact fields stay exact. R44's source-authority field
-   narrowly normalizes the two source-bounded raw phrases `Web search` and `normal Web search` to canonical
-   `Web search`; no other spelling or phrase is accepted.
+   Skill entrypoint, version, and full source-bundle hash. Exact fields stay exact except for documented bounded aliases.
+   R44's source-authority field narrowly normalizes the two source-bounded raw phrases `Web search` and
+   `normal Web search` to canonical `Web search`. R0's progress record likewise normalizes only `hypothesis` and
+   `current hypothesis` to canonical `current hypothesis`; no other spelling or phrase is accepted.
    Receipts preserve both raw and normalized payloads and their hashes. The private expected contract, including its
    alias map, has its own SHA-256 without being exposed to the Host. Skill identity is a runner-observed fact, not a
    model-graded guess. The Host contract covers
@@ -45,6 +46,7 @@ python3 scripts/run_host_eval.py --host all
 python3 scripts/run_host_eval.py --host all --profile r44
 python3 scripts/run_host_eval.py --host all --profile r0-replan
 python3 scripts/run_host_eval.py --profile r44 --regrade-receipt /path/to/source-receipt.json
+python3 scripts/run_host_eval.py --profile r0-replan --regrade-receipt /path/to/source-receipt.json
 python3 scripts/check_browser67_mcp.py --surface-only
 python3 scripts/check_browser67_mcp.py
 ```

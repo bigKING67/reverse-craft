@@ -107,6 +107,10 @@ class HostEvalTests(unittest.TestCase):
         expected = profile["expected"]
         self.assertEqual(HOST_EVAL.R0_REPLAN_SCHEMA, HOST_EVAL.response_schema_path(profile))
         self.assertEqual([], HOST_EVAL.validate_payload(copy.deepcopy(expected), profile))
+        source_label = copy.deepcopy(expected)
+        source_label["progress_record"][0] = "hypothesis"
+        self.assertEqual([], HOST_EVAL.validate_payload(source_label, profile))
+        self.assertEqual(expected, HOST_EVAL.normalize_payload(source_label, profile))
         mutations = {
             "operation replan starts early": lambda value: value.update({"bounded_operation_replan": [True, True]}),
             "operation threshold missed": lambda value: value.update({"bounded_operation_replan": [False, False]}),
@@ -121,6 +125,11 @@ class HostEvalTests(unittest.TestCase):
             with self.subTest(case=name):
                 value = copy.deepcopy(expected)
                 mutate(value)
+                self.assertTrue(HOST_EVAL.validate_payload(value, profile))
+        for rejected_label in ("working hypothesis", "current theory", "hypotheses"):
+            with self.subTest(rejected_label=rejected_label):
+                value = copy.deepcopy(expected)
+                value["progress_record"][0] = rejected_label
                 self.assertTrue(HOST_EVAL.validate_payload(value, profile))
 
     def test_evaluation_receipt_is_content_bound_and_blind(self) -> None:
@@ -157,6 +166,11 @@ class HostEvalTests(unittest.TestCase):
         original_hash = HOST_EVAL.expected_contract_sha256(changed_aliases)
         changed_aliases["normalizers"]["runtime_truth"]["public Web search"] = "Web search"
         self.assertNotEqual(original_hash, HOST_EVAL.expected_contract_sha256(changed_aliases))
+
+        r0_aliases = copy.deepcopy(HOST_EVAL.PROFILES["r0-replan"])
+        original_hash = HOST_EVAL.expected_contract_sha256(r0_aliases)
+        r0_aliases["normalizers"]["progress_record"]["working hypothesis"] = "current hypothesis"
+        self.assertNotEqual(original_hash, HOST_EVAL.expected_contract_sha256(r0_aliases))
 
     def test_hosts_use_explicit_invocation_and_allow_read_only_loading(self) -> None:
         prompt = HOST_EVAL.PROFILES["r3"]["prompt"]

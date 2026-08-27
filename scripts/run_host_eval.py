@@ -77,6 +77,12 @@ PROFILES = {
             "replan_gate": "feasibility gate",
             "change_required": True,
         },
+        "normalizers": {
+            "progress_record": {
+                "current hypothesis": "current hypothesis",
+                "hypothesis": "current hypothesis",
+            },
+        },
     },
 }
 for _profile in PROFILES.values():
@@ -260,6 +266,11 @@ def normalize_payload(value: dict[str, Any], profile: dict[str, Any]) -> dict[st
         raw = normalized.get(field)
         if isinstance(raw, str):
             normalized[field] = aliases.get(raw, raw)
+        elif isinstance(raw, list):
+            normalized[field] = [
+                aliases.get(item, item) if isinstance(item, str) else item
+                for item in raw
+            ]
     return normalized
 
 
