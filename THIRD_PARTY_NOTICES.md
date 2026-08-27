@@ -7,7 +7,7 @@ mechanisms from the projects below. The machine-readable source map is
 ## reverse-skill
 
 - Source: <https://github.com/zhaoxuya520/reverse-skill>
-- Reviewed commit: `914f74ad7d42d18d983d5842f8156440d9068399`
+- Reviewed commit: `37162cf9547c571c680c07005e9863d4610282dd`
 - License: MIT
 - Copyright: Copyright (c) 2026 zhaoxuya520
 - Adapted from `skills/config/routing.json`, stored as
@@ -15,6 +15,9 @@ mechanisms from the projects below. The machine-readable source map is
   enrichment grammar and moves explicit R44 intent ahead of R9 malware analysis for mixed enrichment requests.
 - Adapted: the 43-route taxonomy, deterministic scoring, specialist playbook organization, and bilingual routing
   regression concept. The local CTI/OSINT workflow is reimplemented for Reverse Craft's case/evidence contract.
+- Adapted from the R0 decision-framework entry hook: Reverse Craft keeps R0 primary and records the current hypothesis,
+  evidence gap, and decision delta before feasibility-gated replanning after bounded evidence-free progress. No ADF
+  files or stage framework are copied.
 - Not included: GPL-3.0 CTF Sandbox Orchestrator sources, AGPL Pentest Swarm
   sources, automatic bootstrap behavior, and forced action prompts.
 

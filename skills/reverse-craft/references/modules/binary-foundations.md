@@ -11,6 +11,9 @@ original and record every unpacked/decrypted layer as new evidence.
 - **Useful techniques:** strings/xrefs, call graph slices, controlled-input diffing, debugger trace, lightweight
   emulation, symbolic execution only after constraints are bounded.
 - **Evidence:** exact hash/build, offsets or symbols, branch condition, input/output pair, clean replay.
+- **When progress stalls:** keep R0 primary rather than inventing another route. After three bounded actions or two
+  stage switches produce no new Evidence, record the current hypothesis, attempts, evidence gap, and decision delta;
+  then replan through a feasibility gate and change the entry point, tool, or static/dynamic stage.
 - **Avoid:** decompiling everything, trusting pseudocode types, or patching before the controlling invariant is known.
 
 ## R4 - DSL/custom VM

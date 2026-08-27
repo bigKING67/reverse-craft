@@ -28,7 +28,13 @@ class SetupAndProvenanceTests(unittest.TestCase):
     def test_reference_audit(self) -> None:
         result = audit_references()
         self.assertTrue(result["valid"])
-        self.assertEqual(6, len(result["checks"]))
+        manifest = json.loads(
+            (ROOT / "skills/reverse-craft/references/provenance.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            [entry["path"] for entry in manifest["paths"]],
+            [check["path"] for check in result["checks"]],
+        )
 
     def test_reference_audit_in_standalone_skill(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

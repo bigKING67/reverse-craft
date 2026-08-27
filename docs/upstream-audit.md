@@ -19,6 +19,18 @@ correctly retains its current implementation.
 - Reimplemented the professional workflow as `modules/threat-intelligence-osint.md`; Xquik bootstrap/runtime code was
   not copied, and browser67 remains authoritative when existing logged-in browser state is required.
 
+## Reviewed R0 decision-framework delta (2026-08-27)
+
+- Reviewed reverse-skill from `914f74ad7d42d18d983d5842f8156440d9068399` through
+  `37162cf9547c571c680c07005e9863d4610282dd`; the repository and changed R0/ADF paths remain MIT licensed.
+- Adapted commit `c11e80e6a426c946c4ba7054147fa92639ba855c`: R0 remains primary when analysis is stuck; three bounded
+  actions or two stage switches without new Evidence trigger hypothesis/evidence-gap/decision-delta capture and
+  feasibility-gated replanning in `modules/binary-foundations.md`.
+- Classified commit `37162cf9547c571c680c07005e9863d4610282dd` as `reference_only`: it only repairs CHANGELOG Markdown
+  formatting and changes no reusable mechanism.
+- Did not change the route taxonomy or routing JSON, copy the upstream ADF/stage framework, add dependencies, or import
+  separately licensed GPL/AGPL subprojects.
+
 ## Reviewed codex-keysmith documentation delta (2026-08-26)
 
 - Reviewed codex-keysmith from `6bae8cac5aa675d25ed11607669e7ef2ef97c6ac` through

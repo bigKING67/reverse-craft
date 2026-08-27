@@ -1,6 +1,6 @@
 {
   "schema": "reverse-craft.provenance.v1",
-  "generated_at": "2026-08-26T13:39:21Z",
+  "generated_at": "2026-08-27T02:19:51Z",
   "sources": [
     {
       "id": "browser67",
@@ -14,7 +14,7 @@
     {
       "id": "reverse-skill",
       "url": "https://github.com/zhaoxuya520/reverse-skill",
-      "commit": "914f74ad7d42d18d983d5842f8156440d9068399",
+      "commit": "37162cf9547c571c680c07005e9863d4610282dd",
       "license": "MIT with separately licensed subprojects excluded",
       "role": "selective_source"
     },
@@ -40,6 +40,13 @@
       "scope": "installed",
       "source": "reverse-skill deterministic route scoring concept",
       "classification": "reimplemented"
+    },
+    {
+      "path": "skills/reverse-craft/references/modules/binary-foundations.md",
+      "scope": "installed",
+      "source": "reverse-skill R0 decision-framework entry hook and ADF-R43 deadlock/replan mechanism",
+      "classification": "adapted",
+      "adaptation": "R0 remains primary; the upstream overlay is reduced to bounded evidence-free deadlock thresholds, hypothesis/evidence-gap/decision-delta capture, and feasibility-gated replanning; no ADF files or stage framework copied"
     },
     {
       "path": "skills/reverse-craft/lib/reverse_craft/setup_ops.py",
