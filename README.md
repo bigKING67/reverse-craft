@@ -95,7 +95,8 @@ browser67 结果冒充为已验证；三类证据单独报告。
 
 ## 项目状态
 
-当前版本 `0.1.0`。暂不发布 npm package、Git tag 或 GitHub Release。
+当前版本 `0.2.0`。npm package 仍保持私有；`v0.2.0` Git tag 是可复现 Skill 安装源，本次不创建
+GitHub Release。
 
 架构、验证层级和上游更新流程见 [`docs/architecture.md`](docs/architecture.md)、
 [`docs/verification.md`](docs/verification.md) 与 [`docs/upstream-audit.md`](docs/upstream-audit.md)。

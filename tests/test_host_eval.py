@@ -150,7 +150,7 @@ class HostEvalTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(self.schema_bytes).hexdigest(), receipt["response_schema_sha256"])
         self.assertEqual(HOST_EVAL.expected_contract_sha256(profile), receipt["expected_contract_sha256"])
         self.assertEqual("reverse-craft", receipt["skill"]["name"])
-        self.assertEqual("0.1.0", receipt["skill"]["version"])
+        self.assertEqual("0.2.0", receipt["skill"]["version"])
         self.assertEqual(HOST_EVAL.skill_bundle_sha256(), receipt["skill"]["bundle_sha256"])
 
         r0_profile = HOST_EVAL.PROFILES["r0-replan"]

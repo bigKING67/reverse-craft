@@ -129,10 +129,16 @@ def main() -> int:
     skills = sorted(path for path in files if path.name == "SKILL.md")
     if skills != [SKILL / "SKILL.md"]:
         errors.append(f"expected exactly one SKILL.md, found: {[str(path.relative_to(ROOT)) for path in skills]}")
+    project_version_match = re.search(
+        r'^version = "([^"]+)"$',
+        (ROOT / "pyproject.toml").read_text(encoding="utf-8"),
+        flags=re.MULTILINE,
+    )
     versions = {
         "root": (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
         "skill": (SKILL / "VERSION").read_text(encoding="utf-8").strip(),
         "package": json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"],
+        "project": project_version_match.group(1) if project_version_match else None,
         "runtime": __version__,
     }
     if len(set(versions.values())) != 1:

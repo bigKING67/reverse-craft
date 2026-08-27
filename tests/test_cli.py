@@ -25,7 +25,7 @@ class CliTests(unittest.TestCase):
     def test_version(self) -> None:
         completed = self.run_cli("--version")
         self.assertEqual(0, completed.returncode)
-        self.assertEqual("0.1.0", completed.stdout.strip())
+        self.assertEqual("0.2.0", completed.stdout.strip())
 
     def test_route_json(self) -> None:
         completed = self.run_cli("route", "--hint", "JS reverse request signature", "--json")

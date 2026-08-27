@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-27
+
 - Added first-class R44 CTI/OSINT routing, a public-source intelligence module, bilingual routing coverage, and an
   offline IOC-enrichment scenario; explicit CTI intent now takes priority over mixed malware terminology.
 - Added bounded R0 progress-stall replanning after three evidence-free actions or two stage switches while retaining R0

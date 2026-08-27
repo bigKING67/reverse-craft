@@ -184,7 +184,7 @@ def cleanup_fixture_orphans(home: Path, js_client: McpClient, timeout: int) -> i
     cleanup_task = "stale-fixture-tabs"
     closed = 0
     try:
-        browser.call("initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "reverse-craft-cleanup", "version": "0.1.0"}})
+        browser.call("initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "reverse-craft-cleanup", "version": "0.2.0"}})
         browser.notify("notifications/initialized", {})
         for page in matches:
             target = {
@@ -248,7 +248,7 @@ def main() -> int:
         if not node:
             raise RuntimeError("node is not available")
         client = McpClient([node, str(home / "src/mcp/js-reverse/server.mjs")], home, args.timeout)
-        initialized = client.call("initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "reverse-craft-gate", "version": "0.1.0"}})
+        initialized = client.call("initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "reverse-craft-gate", "version": "0.2.0"}})
         client.notify("notifications/initialized", {})
         listed = client.call("tools/list", {})
         names = [tool["name"] for tool in listed.get("tools", [])]
