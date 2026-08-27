@@ -7,7 +7,9 @@ Reverse Craft keeps evidence tiers separate:
 2. **Unit behavior**: path safety, private file modes, artifact fixity, event-chain tail anchors, snapshot/event
    reconciliation, malformed-data fail-closed behavior, seal shape/timestamp reconciliation, redacted crash diagnostics,
    MCP secret projection, concurrency, seal, setup tamper rejection.
-3. **Routing bank**: 258 manually curated English/Chinese prompts across all 43 routes, including priority/exclusion cases.
+3. **Routing bank**: manually curated English/Chinese prompts across all 43 routes, including priority/exclusion cases.
+   The runner receipt is authoritative for the exact current case count; contract tests enforce the maintained minimum
+   coverage floor separately.
 4. **Offline scenarios**: 11 isolated end-to-end cases through route -> evidence -> finding -> path -> report -> seal.
 5. **Real hosts**: Codex and Pi explicitly invoke an isolated copy of the real Skill for realistic planning requests.
    Their prompts and output schema omit the expected semantic values; the runner validates responses against a private
