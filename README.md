@@ -81,9 +81,13 @@ $RC setup apply --plan /tmp/reverse-craft-plan.json --sha256 <printed-sha256> --
 npm run check:all
 npm run test:hosts          # 真实 Codex + Pi，可用时运行
 npm run test:hosts:cti      # 真实 Codex + Pi 的 R44/CTI 发现与边界探针
+npm run test:hosts:r0       # 真实 Codex + Pi 的 R0 停滞阈值与可行性重规划探针
 python3 scripts/check_browser67_mcp.py --surface-only  # 只读 MCP surface + health
 npm run check:browser67     # 完整 managed fixture/evidence/rebuild/finalize
 ```
+
+R0 Host gate 对比两个停滞阈值前后的决策，并检查 R0 保持 primary、重规划前记录、可行性门和计划维度
+变化；它不证明真实目标一定能继续推进，也不证明某个具体工具在目标环境中可用。
 
 `--surface-only` 不创建、采用、清理或关闭 tab，也不写 evidence/rebuild artifacts。完整 browser67 gate
 只操作自己创建的 localhost fixture，并以 scoped `finalize_task` 收口。基础门禁不把真实宿主或真实

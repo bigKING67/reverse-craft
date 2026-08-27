@@ -4,6 +4,11 @@
 
 - Added first-class R44 CTI/OSINT routing, a public-source intelligence module, bilingual routing coverage, and an
   offline IOC-enrichment scenario; explicit CTI intent now takes priority over mixed malware terminology.
+- Added bounded R0 progress-stall replanning after three evidence-free actions or two stage switches while retaining R0
+  as primary and requiring the current hypothesis, attempts, evidence gap, decision delta, and a feasibility-gated plan
+  change.
+- Added a blind, profile-specific Codex/Pi R0 Host contract with content-bound receipts and bounded offline regrading of
+  `hypothesis` to canonical `current hypothesis`; raw payloads, hashes, and source failures remain preserved.
 - Excluded generated Python bytecode/cache directories from the npm candidate archive.
 - Split case mutation/orchestration from case validation and manifest logic without changing the public CLI or data contracts.
 - Added event-record and seal JSON Schemas with source/runtime field-drift checks and stricter seal reconciliation.
