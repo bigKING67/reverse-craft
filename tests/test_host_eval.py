@@ -25,11 +25,14 @@ class HostEvalTests(unittest.TestCase):
         self.response_schema = json.loads(self.schema_bytes)
 
     def test_profiles_and_response_schema_do_not_expose_expected_values(self) -> None:
-        self.assertEqual([], HOST_EVAL.semantic_schema_keywords(self.response_schema))
-        self.assertEqual([], HOST_EVAL.unsupported_schema_keywords(self.response_schema))
-        self.assertNotIn("skill_name", self.response_schema["properties"])
-        self.assertNotIn("skill_version", self.response_schema["properties"])
         for name, profile in HOST_EVAL.PROFILES.items():
+            response_schema = json.loads(HOST_EVAL.response_schema_path(profile).read_bytes())
+            self.assertEqual([], HOST_EVAL.semantic_schema_keywords(response_schema))
+            self.assertEqual([], HOST_EVAL.unsupported_schema_keywords(response_schema))
+            self.assertNotIn("skill_name", response_schema["properties"])
+            self.assertNotIn("skill_version", response_schema["properties"])
+            self.assertEqual(set(profile["expected"]), set(response_schema["required"]))
+            self.assertEqual(set(profile["expected"]), set(response_schema["properties"]))
             for host in ("codex", "pi"):
                 with self.subTest(profile=name, host=host):
                     self.assertEqual(
@@ -37,7 +40,7 @@ class HostEvalTests(unittest.TestCase):
                         HOST_EVAL.expectation_exposure_errors(
                             HOST_EVAL.host_prompt(host, profile["prompt"]),
                             HOST_EVAL.private_contract(profile),
-                            self.response_schema,
+                            response_schema,
                         ),
                     )
 
@@ -99,6 +102,27 @@ class HostEvalTests(unittest.TestCase):
                 value["runtime_truth"] = rejected_runtime
                 self.assertTrue(HOST_EVAL.validate_payload(value, profile))
 
+    def test_r0_replan_profile_enforces_both_bounded_thresholds(self) -> None:
+        profile = HOST_EVAL.PROFILES["r0-replan"]
+        expected = profile["expected"]
+        self.assertEqual(HOST_EVAL.R0_REPLAN_SCHEMA, HOST_EVAL.response_schema_path(profile))
+        self.assertEqual([], HOST_EVAL.validate_payload(copy.deepcopy(expected), profile))
+        mutations = {
+            "operation replan starts early": lambda value: value.update({"bounded_operation_replan": [True, True]}),
+            "operation threshold missed": lambda value: value.update({"bounded_operation_replan": [False, False]}),
+            "phase replan starts early": lambda value: value.update({"phase_move_replan": [True, True]}),
+            "phase threshold missed": lambda value: value.update({"phase_move_replan": [False, False]}),
+            "primary route changed": lambda value: value.update({"primary_route_unchanged": False}),
+            "progress record reordered": lambda value: value.update({"progress_record": list(reversed(value["progress_record"]))}),
+            "wrong gate": lambda value: value.update({"replan_gate": "availability"}),
+            "no plan change": lambda value: value.update({"change_required": False}),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(case=name):
+                value = copy.deepcopy(expected)
+                mutate(value)
+                self.assertTrue(HOST_EVAL.validate_payload(value, profile))
+
     def test_evaluation_receipt_is_content_bound_and_blind(self) -> None:
         prompt = HOST_EVAL.PROFILES["r3"]["prompt"]
         profile = HOST_EVAL.PROFILES["r3"]
@@ -120,6 +144,15 @@ class HostEvalTests(unittest.TestCase):
         self.assertEqual("0.1.0", receipt["skill"]["version"])
         self.assertEqual(HOST_EVAL.skill_bundle_sha256(), receipt["skill"]["bundle_sha256"])
 
+        r0_profile = HOST_EVAL.PROFILES["r0-replan"]
+        r0_schema_bytes = HOST_EVAL.response_schema_path(r0_profile).read_bytes()
+        r0_receipt = HOST_EVAL.evaluation_receipt(r0_profile["prompt"], r0_schema_bytes, r0_profile)
+        self.assertEqual(
+            hashlib.sha256(r0_schema_bytes).hexdigest(),
+            r0_receipt["response_schema_sha256"],
+        )
+        self.assertNotEqual(receipt["response_schema_sha256"], r0_receipt["response_schema_sha256"])
+
         changed_aliases = copy.deepcopy(HOST_EVAL.PROFILES["r44"])
         original_hash = HOST_EVAL.expected_contract_sha256(changed_aliases)
         changed_aliases["normalizers"]["runtime_truth"]["public Web search"] = "Web search"
@@ -133,6 +166,13 @@ class HostEvalTests(unittest.TestCase):
         self.assertIn("inspect only files inside that Skill", prompt)
         self.assertIn("evidence_chain must be a JSON array of strings", prompt)
         self.assertIn("preserve the full reference string without shortening it", prompt)
+
+        r0_prompt = HOST_EVAL.PROFILES["r0-replan"]["prompt"]
+        self.assertIn("bounded_operation_replan", r0_prompt)
+        self.assertIn("phase_move_replan", r0_prompt)
+        self.assertIn("task's checkpoint order", r0_prompt)
+        self.assertNotIn("current hypothesis", r0_prompt)
+        self.assertNotIn("feasibility gate", r0_prompt)
 
     def test_profile_tasks_match_the_private_route_contract(self) -> None:
         script = ROOT / "skills" / "reverse-craft" / "scripts" / "reverse_craft.py"

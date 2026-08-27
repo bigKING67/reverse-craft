@@ -15,14 +15,18 @@ Reverse Craft keeps evidence tiers separate:
    coverage floor separately.
 5. **Real hosts**: Codex and Pi explicitly invoke an isolated copy of the real Skill for realistic planning requests.
    Their prompts and output schema omit the expected semantic values; the runner validates responses against a private
-   R3/browser67 or R44/CTI contract and binds the receipt to the prompt, schema, Skill entrypoint, version, and full
-   source-bundle hash. Exact fields stay exact. R44's source-authority field narrowly normalizes the two source-bounded
-   raw phrases `Web search` and `normal Web search` to canonical `Web search`; no other spelling or phrase is accepted.
+   R3/browser67, R44/CTI, or R0 bounded-replanning contract and binds the receipt to the prompt, profile-specific schema,
+   Skill entrypoint, version, and full source-bundle hash. Exact fields stay exact. R44's source-authority field
+   narrowly normalizes the two source-bounded raw phrases `Web search` and `normal Web search` to canonical
+   `Web search`; no other spelling or phrase is accepted.
    Receipts preserve both raw and normalized payloads and their hashes. The private expected contract, including its
    alias map, has its own SHA-256 without being exposed to the Host. Skill identity is a runner-observed fact, not a
    model-graded guess. The Host contract covers
-   route, full module reference, runtime/source authority, mutation posture, and evidence-chain order. Executable first
-   actions belong to the next runtime-specific tier because availability changes the correct action.
+   route, full module reference, runtime/source authority, mutation posture, and evidence-chain order. The R0 profile
+   separately compares the checkpoints before and at both bounded progress-stall thresholds, then requires R0 to remain
+   primary, the exact pre-replan record, the named gate, and a changed plan dimension. It does not prove that a real
+   target can progress or that a proposed tool is feasible. Executable first actions belong to the next runtime-specific
+   tier because availability changes the correct action.
 6. **Live browser runtime**: pinned browser67 process executes MCP `initialize -> tools/list -> tools/call`, sees 60 tools,
    opens a scoped managed fixture tab, records evidence, exports a rebuild bundle, and finalizes the task.
 7. **CI portability**: source/unit/route/scenario gates on Python 3.10 and 3.13 across macOS, Ubuntu, and Windows.
@@ -39,6 +43,7 @@ python3 scripts/run_route_bank.py
 python3 scripts/run_scenario_bank.py
 python3 scripts/run_host_eval.py --host all
 python3 scripts/run_host_eval.py --host all --profile r44
+python3 scripts/run_host_eval.py --host all --profile r0-replan
 python3 scripts/run_host_eval.py --profile r44 --regrade-receipt /path/to/source-receipt.json
 python3 scripts/check_browser67_mcp.py --surface-only
 python3 scripts/check_browser67_mcp.py

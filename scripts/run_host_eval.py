@@ -15,13 +15,24 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills" / "reverse-craft"
 SCHEMA = ROOT / "tests" / "fixtures" / "host-response.schema.json"
+R0_REPLAN_SCHEMA = ROOT / "tests" / "fixtures" / "host-r0-replan-response.schema.json"
 EVALUATION_MODE = "blind-contract"
 SKILL_NAME = "reverse-craft"
 OUTPUT_FIELDS = "route_id, module_reference, runtime_truth, mutates, evidence_chain"
+R0_REPLAN_OUTPUT_FIELDS = (
+    "route_id, module_reference, bounded_operation_replan, phase_move_replan, "
+    "primary_route_unchanged, progress_record, replan_gate, change_required"
+)
+DEFAULT_RESPONSE_INSTRUCTIONS = """route_id, module_reference, and runtime_truth must be JSON strings; mutates must be a JSON boolean; evidence_chain must be a JSON array of strings. Copy route_id and module_reference exactly from the primary deterministic route; if the route command is unavailable, read its route/module data and preserve the full reference string without shortening it. For runtime_truth, copy the shortest exact name or phrase used by the Skill for the canonical runtime or default public collection mechanism. Use the Skill's exact evidence labels and order."""
+R0_REPLAN_RESPONSE_INSTRUCTIONS = """route_id, module_reference, and replan_gate must be JSON strings; bounded_operation_replan and phase_move_replan must each be a JSON array of booleans in the task's checkpoint order; primary_route_unchanged and change_required must be JSON booleans; progress_record must be a JSON array of strings. Copy route_id and module_reference exactly from the primary deterministic route; if the route command is unavailable, read its route/module data and preserve the full reference string without shortening it. Read the primary route's module and decide whether replanning is required at each checkpoint. State whether that route remains primary after progress stalls. For progress_record, copy the exact labels in module order that must be recorded before replanning. Copy replan_gate as the shortest exact named gate from the module. State whether the next feasible plan must change one of the module's allowed dimensions."""
 
 
-def evaluation_prompt(task: str) -> str:
-    return f"""{task} Load the explicitly invoked Skill and follow its deterministic routing instructions. You may inspect only files inside that Skill and, when the host supports it, run only its dependency-free read-only route command. Do not access a network or target, modify files, or invent routes or metadata. Return exactly one JSON object with these fields: {OUTPUT_FIELDS}. route_id, module_reference, and runtime_truth must be JSON strings; mutates must be a JSON boolean; evidence_chain must be a JSON array of strings. Copy route_id and module_reference exactly from the primary deterministic route; if the route command is unavailable, read its route/module data and preserve the full reference string without shortening it. For runtime_truth, copy the shortest exact name or phrase used by the Skill for the canonical runtime or default public collection mechanism. Use the Skill's exact evidence labels and order. Do not explain the result or use Markdown."""
+def evaluation_prompt(
+    task: str,
+    output_fields: str = OUTPUT_FIELDS,
+    response_instructions: str = DEFAULT_RESPONSE_INSTRUCTIONS,
+) -> str:
+    return f"""{task} Load the explicitly invoked Skill and follow its deterministic routing instructions. You may inspect only files inside that Skill and, when the host supports it, run only its dependency-free read-only route command. Do not access a network or target, modify files, or invent routes or metadata. Return exactly one JSON object with these fields: {output_fields}. {response_instructions} Do not explain the result or use Markdown."""
 
 
 PROFILES = {
@@ -51,9 +62,33 @@ PROFILES = {
             },
         },
     },
+    "r0-replan": {
+        "task": "An authorized sandbox analyst is examining an unfamiliar stripped executable. Compare four read-only planning checkpoints that yielded no new Evidence: after two bounded operations and after the next operation; after one move between analysis phases and after the next such move. A debugger is available and authorized but has not yet been used. Give only the planning decisions; do not analyze a target.",
+        "output_fields": R0_REPLAN_OUTPUT_FIELDS,
+        "response_instructions": R0_REPLAN_RESPONSE_INSTRUCTIONS,
+        "response_schema": R0_REPLAN_SCHEMA,
+        "expected": {
+            "route_id": "R0",
+            "module_reference": "modules/binary-foundations.md",
+            "bounded_operation_replan": [False, True],
+            "phase_move_replan": [False, True],
+            "primary_route_unchanged": True,
+            "progress_record": ["current hypothesis", "attempts", "evidence gap", "decision delta"],
+            "replan_gate": "feasibility gate",
+            "change_required": True,
+        },
+    },
 }
 for _profile in PROFILES.values():
-    _profile["prompt"] = evaluation_prompt(_profile["task"])
+    _profile["prompt"] = evaluation_prompt(
+        _profile["task"],
+        _profile.get("output_fields", OUTPUT_FIELDS),
+        _profile.get("response_instructions", DEFAULT_RESPONSE_INSTRUCTIONS),
+    )
+
+
+def response_schema_path(profile: dict[str, Any]) -> Path:
+    return profile.get("response_schema", SCHEMA)
 
 
 def string_leaves(value: Any) -> list[str]:
@@ -265,7 +300,8 @@ def run_codex(workspace: Path, timeout: int, prompt: str, profile: dict[str, Any
         [
             binary, "exec", "--ephemeral", "--ignore-rules", "--sandbox", "read-only",
             "--disable", "hooks", "--disable", "memories", "--disable", "plugins", "--disable", "apps",
-            "--skip-git-repo-check", "-C", str(workspace), "--output-schema", str(SCHEMA),
+            "--skip-git-repo-check", "-C", str(workspace),
+            "--output-schema", str(response_schema_path(profile)),
             "--output-last-message", str(output), prompt,
         ],
         text=True, capture_output=True, timeout=timeout, check=False,
@@ -461,7 +497,7 @@ def main() -> int:
     args = parse_args()
     profile = PROFILES[args.profile]
     requested = ["codex", "pi"] if args.host == "all" else [args.host]
-    schema_bytes = SCHEMA.read_bytes()
+    schema_bytes = response_schema_path(profile).read_bytes()
     response_schema = json.loads(schema_bytes)
     exposure_errors = []
     for host in requested:
