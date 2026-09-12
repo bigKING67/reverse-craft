@@ -1,6 +1,6 @@
 ---
 name: reverse-craft
-description: Evidence-first reverse engineering and authorized CTI/OSINT workbench for opaque artifacts, CTF, malware/forensics, public-source threat intelligence, protocol, mobile, binary, browser, cloud, identity, hardware, and security research. Use when a task requires reconstructing an implementation, enriching or correlating cyber-threat intelligence, routing across security specialties, preserving a case evidence chain, or producing a reproducible report.
+description: "Evidence-first reverse engineering：授权范围内的逆向、CTF、恶意样本/DFIR、协议与 CTI/OSINT；用于重建实现或关联威胁证据，产出可复现结果。"
 metadata:
   short-description: Reverse engineering + CTI/OSINT workbench
 ---
